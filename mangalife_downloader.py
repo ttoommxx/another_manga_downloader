@@ -3,11 +3,14 @@ import os
 import sys
 import argparse
 import multiprocessing
+import requests
+import re
+import ast
 from zipfile import ZipFile
-from html.parser import HTMLParser
 
-parser = argparse.ArgumentParser(prog="convert_cbz", description="convert_cbz")
-parser.add_argument("-c", "--commandline", help="select via command line argument")
+
+parser = argparse.ArgumentParser(prog="mangalife_downloader", description="download manga from mangalife")
+parser.add_argument("url")
 ARGS = parser.parse_args() # args.picker contains the modality
 
 
@@ -46,12 +49,35 @@ def download_and_zip(zip_path: str, chapter_path: str, printing_queue: multiproc
 
 def main() -> None:
     """ main function """
-    folder_path = ARGS.commandline
+    
+    url = ARGS.url
+    manga_title = url.split("/")[-1]
+    html_string = requests.get(url).text
+    chapters_string = re.findall(
+        r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
+    list_chapters = ast.literal_eval(chapters_string)
 
-    if not folder_path:
-        sys.exit("Folder not selected")
-    if not os.path.isdir(folder_path):
-        sys.exit("The selections needs to be a folder")
+
+    # for chapter in list_chapters:
+    #     chapter_number = int(chapter["Chapter"][1:-1])
+    #     page_number = 1
+    #     while True:
+    #         url_chapter = f"https://www.manga4life.com/read-online/{
+    #             MANGA}-chapter-{chapter_number}-page-{page_number}.html"
+    #         page_string = requests.get(url_chapter).text
+    #         if "404 Page Not Found" in page_string:
+    #             break
+
+    #         # here do stuff
+
+    #         page_number += 1
+
+    #     break
+
+
+
+    return
+
 
     # essential variables
     manga = os.path.basename(folder_path)
