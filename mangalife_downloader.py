@@ -32,26 +32,26 @@ def printer(manga: str, printing_queue: multiprocessing.Manager().Queue, number_
         print("No chapter has failed")
 
 
-def download_and_zip(chapter: dict) -> bool:
+def download_and_zip(manga_title: str, chapter_number: int, chapter_path) -> bool:
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
 
-    chapter_number = int(chapter["Chapter"][1:-1])
-    manga_title = chapter["manga_title"]
     page_number = 1
     while True:
-        url_chapter = f"https://www.manga4life.com/read-online/{manga_title}-chapter-{chapter_number}-page-{page_number}.html"
-        page = requests.get(url_chapter, timeout = 10)
-        page_string = page.text
-        if "<title>404 Page Not Found</title>" in page_string or page.status_code != 200:
+        response = requests.get(url_chapter, stream=True, timeout=10)
+        if response.status_code != 200:
             break
 
-        # here do stuff
+        file_path = os.path.join(chapter_path, f"{page_number:03d}")
+        if os.path.exists(file_path):
+            continue
+        # Open the file in binary write mode
+        with open(file_path, "wb") as page:
+            for chunk in response.iter_content(1024):
+                page.write(chunk)
 
         page_number += 1
-
-        break
-
+        url_chapter = f"https://official.lowee.us/manga/{manga_title}/{chapter_number:04d}-{page_number:03d}.png"
 
 
     with ZipFile(zip_path, "a") as zip_file:
