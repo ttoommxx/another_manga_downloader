@@ -42,6 +42,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
     chapter_number_format = f"{int(chapter_number[1:-1]):04d}"
     if chapter_number[-1] != "0":
         chapter_number_format += "." + str(chapter_number[-1])
+    index = chapter["Type"].split(" ")[0]+"/" if chapter["Type"] != "Chapter" else ""
 
     chapter_path = os.path.join(folder_path, chapter_number)
     
@@ -54,7 +55,8 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
         while True:
             page_number += 1
             url_chapter = f"https://official.lowee.us/manga/{
-                manga_name}/{chapter_number_format}-{page_number:03d}.png"
+                manga_name}/{index}{chapter_number_format}-{page_number:03d}.png"
+            print(url_chapter)
             response = requests.get(url_chapter, stream=True, timeout=10)
             if response.status_code != 200:
                 break
@@ -95,7 +97,9 @@ def main() -> None:
     list_chapters = ast.literal_eval(chapters_string)
 
     # create folder if does not exists
-    folder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "MANGAS", manga_name)
+    mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
+    os.makedirs(mangas_path, exist_ok=True)
+    folder_path = os.path.join(mangas_path, manga_name)
     os.makedirs(folder_path, exist_ok=True)
 
     # printing queue for communicating between the printer function and the pool
