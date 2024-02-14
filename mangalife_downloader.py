@@ -32,11 +32,12 @@ def printer(manga: str, printing_queue: multiprocessing.Manager().Queue, number_
         print("No chapter has failed")
 
 
-def download_and_zip(manga_title: str, chapter_number: int, chapter_path) -> bool:
+def download_and_zip(manga_title: str, chapter_number: int, chapter_path: str, printing_queue) -> bool:
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
 
     page_number = 1
+    url_chapter = f"https://official.lowee.us/manga/{manga_title}/{chapter_number:04d}-{page_number:03d}.png"
     while True:
         response = requests.get(url_chapter, stream=True, timeout=10)
         if response.status_code != 200:
@@ -53,7 +54,7 @@ def download_and_zip(manga_title: str, chapter_number: int, chapter_path) -> boo
         page_number += 1
         url_chapter = f"https://official.lowee.us/manga/{manga_title}/{chapter_number:04d}-{page_number:03d}.png"
 
-
+    zip_path = os.join(os.path.dirname(chapter_path), chapter_number)
     with ZipFile(zip_path, "a") as zip_file:
         pages = os.listdir(chapter_path)
         for page in pages:
