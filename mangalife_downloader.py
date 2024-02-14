@@ -56,12 +56,12 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             page_number += 1
             url_page = f"https://www.manga4life.com/read-online/{manga_name}-chapter-{chapter_number}{index}-page-{page_number}.html"
             response = requests.get(url_page, timeout=10)
-            if response.status_code != 200:
+            if response.status_code != 200 or "<title>404 Page Not Found</title>" in response.text:
                 break
             
             # plenty of web scaping
             page_text = response.text
-            server_name = re.findall(r'vm.CurPathName = "(.*)";', page_text)[0]
+            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
             server_directory = re.findall(r'vm.CurChapter = (.*);', page_text)[0].replace("null","None")
             server_directory = ast.literal_eval(server_directory)
             chap_num = server_directory["Chapter"]
