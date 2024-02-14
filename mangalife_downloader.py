@@ -38,13 +38,13 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
 
-    chapter_number = chapter["Chapter"]
-    chapter_number_format = f"{int(chapter_number[1:-1]):04d}"
-    if chapter_number[-1] != "0":
-        chapter_number_format += "." + str(chapter_number[-1])
-    index = chapter["Type"].split(" ")[0]+"/" if chapter["Type"] != "Chapter" else ""
+    chapter_name_number = chapter["Chapter"]
+    chapter_number = str(int(chapter_name_number[1:-1]))
+    if chapter_name_number[-1] != "0":
+        chapter_number += "." + str(chapter_name_number[-1])
+    index = "-index-"+chapter_name_number[0] if chapter_name_number[0] != "1" else ""
 
-    chapter_path = os.path.join(folder_path, chapter_number)
+    chapter_path = os.path.join(folder_path, chapter_name_number)
     
     failed_number = None
     if not os.path.exists(chapter_path + ".cbz"):
@@ -54,10 +54,22 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
         page_number = 0
         while True:
             page_number += 1
-            url_chapter = f"https://official.lowee.us/manga/{
-                manga_name}/{index}{chapter_number_format}-{page_number:03d}.png"
-            print(url_chapter)
-            response = requests.get(url_chapter, stream=True, timeout=10)
+            url_page = f"https://www.manga4life.com/read-online/{manga_name}-chapter-{chapter_number}{index}-page-{page_number}.html"
+            response = requests.get(url_page, timeout=10)
+            if response.status_code != 200:
+                break
+            
+            # plenty of web scaping
+            page_text = response.text
+            server_name = re.findall(r'vm.CurPathName = "(.*)";', page_text)[0]
+            server_directory = re.findall(r'vm.CurChapter = (.*);', page_text)[0].replace("null","None")
+            server_directory = ast.literal_eval(server_directory)
+            chap_num = server_directory["Chapter"]
+            chap_num = chap_num[1:-1] if chap_num[-1] == "0" else chap_num[1:-1]+"."+chap_num[-1]
+            chap_dir = server_directory["Directory"]
+            chap_dir = chap_dir+"/" if chap_dir else chap_dir
+            image_link = f"https://{server_name}/manga/{manga_name}/{chap_dir}{chap_num}-{page_number:03d}.png"
+            response = requests.get(image_link, stream=True, timeout=10)
             if response.status_code != 200:
                 break
 
@@ -69,7 +81,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
                         page.write(chunk)
 
         # ZIP
-        zip_path = os.path.join(folder_path, chapter_number + ".cbz")
+        zip_path = os.path.join(folder_path, chapter_name_number + ".cbz")
         with ZipFile(zip_path, "a") as zip_file:
             pages = os.listdir(chapter_path)
             for page in pages:
@@ -92,7 +104,11 @@ def main() -> None:
     # fetch url and chapters data
     url = ARGS.url
     manga_name = url.split("/")[-1]
-    html_string = requests.get(url, timeout=30).text
+    response = requests.get(url, timeout=30)
+    if response.status_code != 200:
+        print("cannot request the mange, existing the program")
+        return
+    html_string = response.text
     chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
     list_chapters = ast.literal_eval(chapters_string)
 
