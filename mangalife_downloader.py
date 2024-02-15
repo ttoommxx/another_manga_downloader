@@ -2,13 +2,13 @@
 import os
 import argparse
 import multiprocessing
+import threading
 import re
 import ast
-import shutil
 from zipfile import ZipFile
 import requests
 
-MAX_PROCESSES = os.cpu_count()
+MAX_PROCESSES = min(os.cpu_count(), 8)
 
 parser = argparse.ArgumentParser(prog="mangalife_downloader", description="download manga from mangalife")
 parser.add_argument("url")
@@ -17,10 +17,13 @@ ARGS = parser.parse_args() # args.picker contains the modality
 
 def printer(manga_name: str, printing_queue: multiprocessing.Manager().Queue, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
+    print("Press CTRL+C to quit.")
     print(f" {manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
     for i in range(1, number_chapters+1):
         token = printing_queue.get()
+        if token == "quit":
+            return
         if token:
             failed.append(token)
         print(f" {manga_name}: {i} / {number_chapters} completed", end="\r")
@@ -51,6 +54,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
         os.makedirs(chapter_path, exist_ok=True)
 
         # DOWNLOAD
+        pages = []
         page_number = 0
         while True:
             page_number += 1
@@ -59,7 +63,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             if response.status_code != 200 or "<title>404 Page Not Found</title>" in response.text:
                 break
             
-            # plenty of web scaping
+            # web scaping
             page_text = response.text
             server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
             server_directory = re.findall(r'vm.CurChapter = (.*);', page_text)[0].replace("null","None")
@@ -76,24 +80,37 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             file_path = os.path.join(chapter_path, f"{page_number:03d}.png")
             if not os.path.exists(file_path):
                 # open the file in binary write mode
-                with open(file_path, "wb") as page:
-                    for chunk in response.iter_content(1024):
-                        page.write(chunk)
+                try:
+                    with open(file_path, "wb") as page:
+                        for chunk in response.iter_content(1024):
+                            page.write(chunk)
+                except KeyboardInterrupt:
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
+                    return
+            pages.append(file_path) 
 
         # ZIP
         zip_path = os.path.join(folder_path, chapter_name_number + ".cbz")
-        with ZipFile(zip_path, "a") as zip_file:
-            pages = os.listdir(chapter_path)
-            for page in pages:
-                page_path = os.path.join(chapter_path, page)
-                zip_file.write(page_path, page)
+        try:
+            with ZipFile(zip_path, "a") as zip_file:
+                for page in pages:
+                    page_path = os.path.join(chapter_path, page)
+                    zip_file.write(page_path, page)
+        except KeyboardInterrupt:
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+            return
 
         # remove folder
-        shutil.rmtree(chapter_path)
+        for page in pages:
+            os.remove(page)
+        if not os.listdir(chapter_path):
+            os.rmdir(chapter_path)
         
         # save chapter name is fail
         if not os.path.exists(zip_path):
-            failed_number = os.path.basename(zip_path)
+            failed_number = chapter_name_number
 
     printing_queue.put(failed_number)
 
@@ -119,23 +136,32 @@ def main() -> None:
     os.makedirs(folder_path, exist_ok=True)
 
     # printing queue for communicating between the printer function and the pool
-    printing_queue = multiprocessing.Manager().Queue()
+    manager = multiprocessing.Manager()
+    printing_queue = manager.Queue()
 
     # add more to the list of chapters
     list_chapters = [[chapter, folder_path, printing_queue, manga_name] for chapter in list_chapters]
+    number_chapters = len(list_chapters)
 
     # start processing pool
-    pool = multiprocessing.Pool(processes=MAX_PROCESSES+1)
+    pool = multiprocessing.Pool(processes=MAX_PROCESSES)
 
-    # set up the printing function
-    number_chapters = len(list_chapters)
-    pool.apply_async(printer, (manga_name, printing_queue, number_chapters))
-
-    # set up the zipper processing of the chapters
-    pool.starmap(download_and_zip, list_chapters)
-
+    # send all the processes to a pool
+    printer_thread = threading.Thread(target=printer, daemon=True, args=(manga_name, printing_queue, number_chapters))
+    printer_thread.start()
+    try: # if CTRL+C stop execution
+        pool.starmap(download_and_zip, list_chapters)
+    except KeyboardInterrupt:
+        print("\nProgram terminated")
+        pool.terminate()
+        
     pool.close()
     pool.join()
+    printing_queue.put("quit")
+    printer_thread.join()
+
+    manager.shutdown()
+
 
 if __name__ == "__main__":
     main()
