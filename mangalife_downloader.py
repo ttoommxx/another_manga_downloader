@@ -17,7 +17,7 @@ ARGS = parser.parse_args() # args.picker contains the modality
 
 def printer(manga_name: str, printing_queue: multiprocessing.Manager().Queue, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
-    print(f"-{manga_name}: 0 / {number_chapters} completed", end="\r")
+    print(f"- {manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
     for i in range(1, number_chapters+1):
         token = printing_queue.get()
@@ -25,7 +25,7 @@ def printer(manga_name: str, printing_queue: multiprocessing.Manager().Queue, nu
             return
         if token:
             failed.append(token)
-        print(f"-{manga_name}: {i} / {number_chapters} completed", end="\r")
+        print(f"- {manga_name}: {i} / {number_chapters} completed", end="\r")
 
     print()
     if failed:
