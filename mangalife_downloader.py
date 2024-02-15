@@ -11,14 +11,13 @@ import requests
 MAX_PROCESSES = min(os.cpu_count(), 8)
 
 parser = argparse.ArgumentParser(prog="mangalife_downloader", description="download manga from mangalife")
-parser.add_argument("url")
+parser.add_argument("urls", nargs="+")
 ARGS = parser.parse_args() # args.picker contains the modality
 
 
 def printer(manga_name: str, printing_queue: multiprocessing.Manager().Queue, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
-    print("Press CTRL+C to quit.")
-    print(f" {manga_name}: 0 / {number_chapters} completed", end="\r")
+    print(f"-{manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
     for i in range(1, number_chapters+1):
         token = printing_queue.get()
@@ -26,7 +25,7 @@ def printer(manga_name: str, printing_queue: multiprocessing.Manager().Queue, nu
             return
         if token:
             failed.append(token)
-        print(f" {manga_name}: {i} / {number_chapters} completed", end="\r")
+        print(f"-{manga_name}: {i} / {number_chapters} completed", end="\r")
 
     print()
     if failed:
@@ -118,49 +117,50 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
 def main() -> None:
     """ main function """
     
+    print("Press CTRL+C to quit.")
     # fetch url and chapters data
-    url = ARGS.url
-    manga_name = url.split("/")[-1]
-    response = requests.get(url, timeout=30)
-    if response.status_code != 200:
-        print("cannot request the mange, existing the program")
-        return
-    html_string = response.text
-    chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
-    list_chapters = ast.literal_eval(chapters_string)
+    for url in ARGS.urls:
+        manga_name = url.split("/")[-1]
+        response = requests.get(url, timeout=30)
+        if response.status_code != 200:
+            print("cannot request the mange, existing the program")
+            return
+        html_string = response.text
+        chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
+        list_chapters = ast.literal_eval(chapters_string)
 
-    # create folder if does not exists
-    mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
-    os.makedirs(mangas_path, exist_ok=True)
-    folder_path = os.path.join(mangas_path, manga_name)
-    os.makedirs(folder_path, exist_ok=True)
+        # create folder if does not exists
+        mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
+        os.makedirs(mangas_path, exist_ok=True)
+        folder_path = os.path.join(mangas_path, manga_name)
+        os.makedirs(folder_path, exist_ok=True)
 
-    # printing queue for communicating between the printer function and the pool
-    manager = multiprocessing.Manager()
-    printing_queue = manager.Queue()
+        # printing queue for communicating between the printer function and the pool
+        manager = multiprocessing.Manager()
+        printing_queue = manager.Queue()
 
-    # add more to the list of chapters
-    list_chapters = [[chapter, folder_path, printing_queue, manga_name] for chapter in list_chapters]
-    number_chapters = len(list_chapters)
+        # add more to the list of chapters
+        list_chapters = [[chapter, folder_path, printing_queue, manga_name] for chapter in list_chapters]
+        number_chapters = len(list_chapters)
 
-    # start processing pool
-    pool = multiprocessing.Pool(processes=MAX_PROCESSES)
+        # start processing pool
+        pool = multiprocessing.Pool(processes=MAX_PROCESSES)
 
-    # send all the processes to a pool
-    printer_thread = threading.Thread(target=printer, daemon=True, args=(manga_name, printing_queue, number_chapters))
-    printer_thread.start()
-    try: # if CTRL+C stop execution
-        pool.starmap(download_and_zip, list_chapters)
-    except KeyboardInterrupt:
-        print("\nProgram terminated")
-        pool.terminate()
-        
-    pool.close()
-    pool.join()
-    printing_queue.put("quit")
-    printer_thread.join()
+        # send all the processes to a pool
+        printer_thread = threading.Thread(target=printer, daemon=True, args=(manga_name, printing_queue, number_chapters))
+        printer_thread.start()
+        try: # if CTRL+C stop execution
+            pool.starmap(download_and_zip, list_chapters)
+        except KeyboardInterrupt:
+            print("\nProgram terminated")
+            pool.terminate()
+            
+        pool.close()
+        pool.join()
+        printing_queue.put("quit")
+        printer_thread.join()
 
-    manager.shutdown()
+        manager.shutdown()
 
 
 if __name__ == "__main__":
