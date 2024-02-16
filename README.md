@@ -1,3 +1,3 @@
-# mangalife_downloader
+# mangalife_downloader 0.5
 
-run `python mangalife_downloader` followed by the URL of the Manga you want to download from mangalife.
+Run `python mangalife_downloader` followed by the URLS of the Mangas you want to download from manga4life.

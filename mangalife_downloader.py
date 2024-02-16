@@ -8,7 +8,7 @@ import ast
 from zipfile import ZipFile
 import requests
 
-MAX_PROCESSES = min(os.cpu_count(), 8)
+MAX_PROCESSES = min(os.cpu_count(), 4)
 
 parser = argparse.ArgumentParser(prog="mangalife_downloader", description="download manga from mangalife")
 parser.add_argument("urls", nargs="+")
