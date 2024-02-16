@@ -47,9 +47,10 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
     index = "-index-"+chapter_name_number[0] if chapter_name_number[0] != "1" else ""
 
     chapter_path = os.path.join(folder_path, chapter_name_number)
+    zip_path = chapter_path + ".cbz"
     
     failed_number = None
-    if not os.path.exists(chapter_path + ".cbz"):
+    if not os.path.exists(zip_path):
         os.makedirs(chapter_path, exist_ok=True)
 
         # DOWNLOAD
@@ -90,7 +91,6 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             pages.append(file_path) 
 
         # ZIP
-        zip_path = os.path.join(folder_path, chapter_name_number + ".cbz")
         try:
             with ZipFile(zip_path, "a") as zip_file:
                 for page in pages:
@@ -152,8 +152,9 @@ def main() -> None:
         try: # if CTRL+C stop execution
             pool.starmap(download_and_zip, list_chapters)
         except KeyboardInterrupt:
-            print("\nProgram terminated")
+            print()
             pool.terminate()
+            print("\nProgram terminated")
             
         pool.close()
         pool.join()
