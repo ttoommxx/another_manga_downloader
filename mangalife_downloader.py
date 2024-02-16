@@ -10,7 +10,8 @@ import requests
 
 MAX_PROCESSES = min(os.cpu_count(), 8)
 
-parser = argparse.ArgumentParser(prog="mangalife_downloader", description="download manga from mangalife")
+parser = argparse.ArgumentParser(prog="mangalife_downloader",
+                                 description="download manga from mangalife")
 parser.add_argument("urls", nargs="+")
 ARGS = parser.parse_args() # args.picker contains the modality
 
@@ -48,7 +49,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
 
     chapter_path = os.path.join(folder_path, chapter_name_number)
     zip_path = chapter_path + ".cbz"
-    
+
     failed_number = None
     if not os.path.exists(zip_path):
         os.makedirs(chapter_path, exist_ok=True)
@@ -62,7 +63,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             response = requests.get(url_page, timeout=10)
             if response.status_code != 200 or "<title>404 Page Not Found</title>" in response.text:
                 break
-            
+
             # web scaping
             page_text = response.text
             server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
@@ -88,7 +89,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
                     if os.path.exists(file_path):
                         os.remove(file_path)
                     return
-            pages.append(file_path) 
+            pages.append(file_path)
 
         # ZIP
         try:
@@ -106,7 +107,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
             os.remove(page)
         if not os.listdir(chapter_path):
             os.rmdir(chapter_path)
-        
+
         # save chapter name is fail
         if not os.path.exists(zip_path):
             failed_number = chapter_name_number
@@ -116,7 +117,7 @@ def download_and_zip(chapter: dict, folder_path: str, printing_queue: multiproce
 
 def main() -> None:
     """ main function """
-    
+
     print("Press CTRL+C to quit.")
     # fetch url and chapters data
     for url in ARGS.urls:
@@ -147,7 +148,9 @@ def main() -> None:
         pool = multiprocessing.Pool(processes=MAX_PROCESSES)
 
         # send all the processes to a pool
-        printer_thread = threading.Thread(target=printer, daemon=True, args=(manga_name, printing_queue, number_chapters))
+        printer_thread = threading.Thread(target=printer,
+                                          daemon=True,
+                                          args=(manga_name, printing_queue, number_chapters))
         printer_thread.start()
         try: # if CTRL+C stop execution
             pool.starmap(download_and_zip, list_chapters)
@@ -155,7 +158,7 @@ def main() -> None:
             print()
             pool.terminate()
             print("\nProgram terminated")
-            
+
         pool.close()
         pool.join()
         printing_queue.put("quit")
