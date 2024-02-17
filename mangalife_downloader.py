@@ -180,10 +180,10 @@ PRINTING_QUEUE = MANAGER.Queue()
 
 signal.signal(signal.SIGINT, sigint_handler)
 
-print("Press CTRL+C to quit, the download will resume at re-run.")
+print("Press CTRL+C to quit.")
 for url in ARGS.urls:
     main(url)
 
 MANAGER.shutdown()
 
-print("\nProgram terminated." if STOPPER.value else "\nDownload finished.")
+print("\nProgram terminated, re-run to resume." if STOPPER.value else "\nDownload finished.")
