@@ -19,7 +19,7 @@ ARGS = parser.parse_args() # args.picker contains the modality
 
 def printer(manga_name: str, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
-    if STOPPER:
+    if STOPPER.value:
         return
     print(f"- {manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
@@ -40,10 +40,10 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed")
 
 
-def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> bool:
+def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
-    if STOPPER:
+    if STOPPER.value:
         return
 
     chapter_name_number = chapter["Chapter"]
@@ -89,7 +89,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> bool:
                 with open(file_path, "wb") as page:
                     for chunk in response.iter_content(1024):
                         page.write(chunk)
-            if STOPPER:
+            if STOPPER.value:
                 return
 
             pages.append(file_path)
@@ -97,11 +97,11 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> bool:
         # ZIP
         with ZipFile(zip_path, "a") as zip_file:
             for page in pages:
-                if STOPPER:
+                if STOPPER.value:
                     break
                 page_path = os.path.join(chapter_path, page)
                 zip_file.write(page_path, page)
-        if STOPPER:
+        if STOPPER.value:
             if os.path.exists(zip_path):
                 os.remove(zip_path)
             return
@@ -121,7 +121,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> bool:
 
 def main(url_manga: str) -> None:
     """ main function """
-    if STOPPER:
+    if STOPPER.value:
         return
 
     # fetch url and chapters data
@@ -145,7 +145,7 @@ def main(url_manga: str) -> None:
     number_chapters = len(list_chapters)
 
     # start processing pool
-    pool = multiprocessing.Pool(processes=MAX_PROCESSES)
+    pool = multiprocessing.Pool(processes=MAX_PROCESSES, initializer=init_proc)
 
     # send all the processes to a pool
     printer_thread = threading.Thread(target=printer,
@@ -159,26 +159,31 @@ def main(url_manga: str) -> None:
     printer_thread.join()
 
 
-def sigint_handler(sig, frame):
+def sigint_handler(sig, frame) -> None:
     """ signal keyboard interrupt handler """
-    global STOPPER
-    STOPPER = True
-    PRINTING_QUEUE.put(1)
+    if MAIN:
+        PRINTING_QUEUE.put(1)
+        STOPPER.value = 1
 
+
+def init_proc() -> None:
+    """ initializer for processes """
+    global MAIN
+    MAIN = False
 
 # MAIN FUNCTION - keep everything as global for simplicity
 
-STOPPER = False
+MAIN = True
 MANAGER = multiprocessing.Manager()
+STOPPER = multiprocessing.Value("i", 0)
 PRINTING_QUEUE = MANAGER.Queue()
 
 signal.signal(signal.SIGINT, sigint_handler)
 
-print("Press CTRL+C to quit.")
+print("Press CTRL+C to quit, the download will resume at re-run.")
 for url in ARGS.urls:
     main(url)
 
-PRINTING_QUEUE.put(1)
 MANAGER.shutdown()
 
-print("\nProgram terminated." if STOPPER else "\nDownload finished.")
+print("\nProgram terminated." if STOPPER.value else "\nDownload finished.")
