@@ -9,22 +9,51 @@ import signal
 from zipfile import ZipFile
 import requests
 
-MAX_PROCESSES = min(os.cpu_count(), 8)
 
-parser = argparse.ArgumentParser(prog="mangalife_downloader",
-                                 description="download manga from mangalife")
-parser.add_argument("urls", nargs="+")
-ARGS = parser.parse_args() # args.picker contains the modality
+class Environment:
+    """ class that defined environment variables """
+
+    def __init__(self):
+        self.max_processes = min(os.cpu_count(), 8)
+        self.main = True
+        self.manager = multiprocessing.Manager()
+        self._stop = multiprocessing.Value("i", 0)
+        self.print_queue = self.manager.Queue()
+
+    @property
+    def stop(self) -> int:
+        """ return stopping value """
+        return self._stop.value
+
+    @stop.setter
+    def stop(self, val) -> None:
+        """ setter for stop multiprocessing value """
+        self._stop = val
+
+    def init_sub_proc(self) -> None:
+        """ initialiser for secondary processes """
+        self.main = False
+
+    def sigint_handler(self, sig, frame) -> None:
+        """ signal keyboard interrupt handler """
+        if self.main:
+            self.print_queue.put(1)
+            self._stop.value = 1
+
+    def quit(self) -> None:
+        """ quit environment """
+        self.manager.shutdown()
+        print("\nProgram terminated, re-run to resume." if self.stop else "\nDownload finished.")
 
 
 def printer(manga_name: str, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
-    if STOPPER.value:
+    if ENV.stop:
         return
     print(f"- {manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
     for i in range(1, number_chapters+1):
-        token = PRINTING_QUEUE.get()
+        token = ENV.print_queue.get()
         if token == 1:
             return
         if token:
@@ -43,7 +72,7 @@ def printer(manga_name: str, number_chapters: int) -> None:
 def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
-    if STOPPER.value:
+    if ENV.stop:
         return
 
     chapter_name_number = chapter["Chapter"]
@@ -89,7 +118,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
                 with open(file_path, "wb") as page:
                     for chunk in response.iter_content(1024):
                         page.write(chunk)
-            if STOPPER.value:
+            if ENV.stop:
                 return
 
             pages.append(file_path)
@@ -97,11 +126,11 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
         # ZIP
         with ZipFile(zip_path, "a") as zip_file:
             for page in pages:
-                if STOPPER.value:
+                if ENV.stop:
                     break
                 page_path = os.path.join(chapter_path, page)
                 zip_file.write(page_path, page)
-        if STOPPER.value:
+        if ENV.stop:
             if os.path.exists(zip_path):
                 os.remove(zip_path)
             return
@@ -116,12 +145,12 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
         if not os.path.exists(zip_path):
             failed_number = chapter_name_number
 
-    PRINTING_QUEUE.put(failed_number)
+    ENV.print_queue.put(failed_number)
 
 
-def main(url_manga: str) -> None:
+def download_manga(url_manga: str) -> None:
     """ main function """
-    if STOPPER.value:
+    if ENV.stop:
         return
 
     # fetch url and chapters data
@@ -151,7 +180,7 @@ def main(url_manga: str) -> None:
     number_chapters = len(list_chapters)
 
     # start processing pool
-    pool = multiprocessing.Pool(processes=MAX_PROCESSES, initializer=init_proc)
+    pool = multiprocessing.Pool(processes=ENV.max_processes, initializer=ENV.init_sub_proc)
 
     # send all the processes to a pool
     printer_thread = threading.Thread(target=printer,
@@ -165,31 +194,20 @@ def main(url_manga: str) -> None:
     printer_thread.join()
 
 
-def sigint_handler(sig, frame) -> None:
-    """ signal keyboard interrupt handler """
-    if MAIN:
-        PRINTING_QUEUE.put(1)
-        STOPPER.value = 1
+if __name__ == "__main__":
+    ENV = Environment()
 
+    parser = argparse.ArgumentParser(prog="mangalife_downloader",
+                                    description="download manga from mangalife")
+    parser.add_argument("urls", nargs="+")
+    args = parser.parse_args()  # args.picker contains the modality
 
-def init_proc() -> None:
-    """ initializer for processes """
-    global MAIN
-    MAIN = False
+    signal.signal(signal.SIGINT, ENV.sigint_handler)
 
-# MAIN FUNCTION - keep everything as global for simplicity
+    print("Press CTRL+C to quit.")
+    for url in args.urls:
+        download_manga(url)
 
-MAIN = True
-MANAGER = multiprocessing.Manager()
-STOPPER = multiprocessing.Value("i", 0)
-PRINTING_QUEUE = MANAGER.Queue()
-
-signal.signal(signal.SIGINT, sigint_handler)
-
-print("Press CTRL+C to quit.")
-for url in ARGS.urls:
-    main(url)
-
-MANAGER.shutdown()
-
-print("\nProgram terminated, re-run to resume." if STOPPER.value else "\nDownload finished.")
+    ENV.quit()
+else:
+    print("Import not yet implemented")
