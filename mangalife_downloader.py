@@ -129,11 +129,11 @@ def main(url_manga: str) -> None:
     try:
         response = requests.get(url_manga, timeout=30)
     except requests.exceptions.RequestException as e:
-        print(f"Failed retrieving {manga_name} with the following error")
+        print(f"Failed retrieving {manga_name} with the following error:")
         print(e)
         return
     if response.status_code != 200:
-        print(f"Failed retrieving {manga_name} with the following response status code")
+        print(f"Failed retrieving {manga_name} with the following response status code:")
         print(response.status_code)
         return
     html_string = response.text
