@@ -126,9 +126,15 @@ def main(url_manga: str) -> None:
 
     # fetch url and chapters data
     manga_name = url_manga.split("/")[-1]
-    response = requests.get(url_manga, timeout=30)
+    try:
+        response = requests.get(url_manga, timeout=30)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed retrieving {manga_name} with the following error")
+        print(e)
+        return
     if response.status_code != 200:
-        print("Cannot request the mange, existing the program")
+        print(f"Failed retrieving {manga_name} with the following response status code")
+        print(response.status_code)
         return
     html_string = response.text
     chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
