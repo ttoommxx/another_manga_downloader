@@ -152,11 +152,15 @@ def download_manga(url_manga: str) -> None:
     """ main function """
     if ENV.stop:
         return
+    if not url_manga.startswith("https://www.manga4life.com/"):
+        print(url_manga)
+        print("is not manga4life website.")
+        return
 
     # fetch url and chapters data
     manga_name = url_manga.split("/")[-1]
     try:
-        response = requests.get(url_manga, timeout=30)
+        response = requests.get(url_manga, timeout=10)
     except requests.exceptions.RequestException as e:
         print(f"Failed retrieving {manga_name} with the following error:")
         print(e)
