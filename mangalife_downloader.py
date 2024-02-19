@@ -15,7 +15,6 @@ class Environment:
 
     def __init__(self):
         self.max_processes = min(os.cpu_count(), 8)
-        self.main = True
         self.manager = multiprocessing.Manager()
         self._stop = multiprocessing.Value("i", 0)
         self.print_queue = self.manager.Queue()
@@ -30,15 +29,15 @@ class Environment:
         """ setter for stop multiprocessing value """
         self._stop = val
 
-    def init_sub_proc(self) -> None:
+    def set_child_process(self) -> None:
         """ initialiser for secondary processes """
-        self.main = False
+        signal.signal(signal.SIGINT, lambda *args:None)
 
     def sigint_handler(self, sig, frame) -> None:
         """ signal keyboard interrupt handler """
-        if self.main:
-            self.print_queue.put(1)
-            self._stop.value = 1
+        print("\nQuitting..")
+        self.print_queue.put(1)
+        self._stop.value = 1
 
     def quit(self) -> None:
         """ quit environment """
@@ -184,7 +183,7 @@ def download_manga(url_manga: str) -> None:
     number_chapters = len(list_chapters)
 
     # start processing pool
-    pool = multiprocessing.Pool(processes=ENV.max_processes, initializer=ENV.init_sub_proc)
+    pool = multiprocessing.Pool(processes=ENV.max_processes, initializer=ENV.set_child_process)
 
     # send all the processes to a pool
     printer_thread = threading.Thread(target=printer,
@@ -213,5 +212,3 @@ if __name__ == "__main__":
         download_manga(url)
 
     ENV.quit()
-else:
-    print("Import not yet implemented")
