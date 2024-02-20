@@ -7,7 +7,9 @@ import re
 import ast
 import signal
 from zipfile import ZipFile
+from itertools import islice
 import requests
+import raw_input
 
 
 class Environment:
@@ -197,18 +199,82 @@ def download_manga(url_manga: str) -> None:
     printer_thread.join()
 
 
+def search() -> str:
+    """ function that search for a manga in the database """
+    raw_input.clear()
+    print("Downloading list of manga chapters..")
+    response = requests.get("https://www.manga4life.com/search/", timeout=10)
+    if response.status_code != 200:
+        print("Cannot reach the server.")
+        return ""
+    page_text = response.text
+    list_mangas = re.findall(r'vm.Directory = (.*);', page_text)[0]
+    list_mangas = list_mangas.replace("null", "None").replace("false", "False").replace("true", "True")
+    list_mangas = ast.literal_eval(list_mangas)
+    list_mangas = [(entry["i"], entry["i"].replace("-", " "), entry["i"].replace("-", " ").lower())
+                  for entry in list_mangas]
+    # first entry-url, second entry-display, third entry-search
+    list_mangas.sort()
+
+    index = 0
+    word_display = ""
+    while True:
+        raw_input.clear()
+        print("Press tab to exit.")
+        print("|", word_display)
+        rows_len = os.get_terminal_size().lines-3
+        columns_len = os.get_terminal_size().columns
+        word_search = word_display.lower()
+        search_list = (entry for entry in list_mangas if word_search in entry[2])
+        search_list = list(islice(search_list, rows_len))
+
+        index = min(index, max(len(search_list)-1, 0))
+
+        for i, entry in enumerate(search_list):
+            title = entry[1]
+            if len(title) > columns_len-2:
+                title = title[:columns_len-5] + "..."
+            pre = "-" if i == index else " "
+            print(pre, title)
+
+        button = raw_input.get_key()
+        if button == "enter":
+            return f"https://www.manga4life.com/manga/{search_list[index][0]}"
+        elif button == "backspace":
+            word_display = word_display[:-1]
+        elif button == "tab":
+            return ""
+        elif button == "up":
+            if index:
+                index -= 1
+        elif button == "down":
+            if index <= rows_len-2:
+                index += 1
+        elif button == "left" or button == "right":
+            pass
+        else:
+            word_display += button
+
+
 if __name__ == "__main__":
     ENV = Environment()
 
     parser = argparse.ArgumentParser(prog="mangalife_downloader",
                                     description="download manga from mangalife")
-    parser.add_argument("urls", nargs="+")
+    parser.add_argument("-u", "--urls", nargs="+")
     args = parser.parse_args()  # args.picker contains the modality
 
     signal.signal(signal.SIGINT, ENV.sigint_handler)
 
-    print("Press CTRL+C to quit.")
-    for url in args.urls:
-        download_manga(url)
+    if args.urls:
+        print("Press CTRL+C to quit.")
+        for url in args.urls:
+            download_manga(url)
+    else:
+        url = search()
+        raw_input.clear()
+        print("Press CTRL+C to quit.")
+        if url:
+            download_manga(url)
 
     ENV.quit()
