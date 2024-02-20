@@ -44,7 +44,8 @@ class Environment:
     def quit(self) -> None:
         """ quit environment """
         self.manager.shutdown()
-        print("\nProgram terminated, re-run to resume." if self.stop else "\nDownload finished.")
+        if self.stop:
+            print("\nProgram terminated, re-run to resume.")
 
 
 def printer(manga_name: str, number_chapters: int) -> None:
@@ -211,7 +212,7 @@ def search() -> str:
     list_mangas = re.findall(r'vm.Directory = (.*);', page_text)[0]
     list_mangas = list_mangas.replace("null", "None").replace("false", "False").replace("true", "True")
     list_mangas = ast.literal_eval(list_mangas)
-    list_mangas = [(entry["i"], entry["i"].replace("-", " "), entry["i"].replace("-", " ").lower())
+    list_mangas = [(entry["i"], entry["s"], entry["s"].lower())
                   for entry in list_mangas]
     # first entry-url, second entry-display, third entry-search
     list_mangas.sort()
@@ -221,7 +222,7 @@ def search() -> str:
     while True:
         raw_input.clear()
         print("Press tab to exit.")
-        print("|", word_display)
+        print("=", word_display)
         rows_len = os.get_terminal_size().lines-3
         columns_len = os.get_terminal_size().columns
         word_search = word_display.lower()
@@ -273,8 +274,8 @@ if __name__ == "__main__":
     else:
         url = search()
         raw_input.clear()
-        print("Press CTRL+C to quit.")
         if url:
+            print("Press CTRL+C to quit.")
             download_manga(url)
 
     ENV.quit()
