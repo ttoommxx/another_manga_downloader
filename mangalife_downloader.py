@@ -224,12 +224,16 @@ def search() -> str:
         raw_input.clear()
         print("Press tab to exit.")
         print("=", word_display)
+
         rows_len = os.get_terminal_size().lines-3
         columns_len = os.get_terminal_size().columns
-        word_search = word_display.lower()
-        search_list = (entry for entry in list_mangas if word_search in entry[2])
+
+        word_search = word_display.lower().replace(" ", r".*")
+        search_list = (
+            entry for entry in list_mangas if re.search(word_search, entry[2]))
         search_list = list(islice(search_list, rows_len))
 
+        # adjust the index
         index = min(index, max(len(search_list)-1, 0))
 
         for i, entry in enumerate(search_list):
