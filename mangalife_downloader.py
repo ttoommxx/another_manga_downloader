@@ -172,13 +172,14 @@ def download_manga(url_manga: str) -> None:
         print(response.status_code)
         return
     html_string = response.text
+    manga_name_display = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
     chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
     list_chapters = ast.literal_eval(chapters_string)
 
     # create folder if does not exists
     mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
-    folder_path = os.path.join(mangas_path, manga_name)
+    folder_path = os.path.join(mangas_path, manga_name_display)
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
@@ -191,7 +192,7 @@ def download_manga(url_manga: str) -> None:
     # send all the processes to a pool
     printer_thread = threading.Thread(target=printer,
                                         daemon=True,
-                                        args=(manga_name, number_chapters))
+                                      args=(manga_name_display, number_chapters))
     printer_thread.start()
     pool.starmap(download_and_zip, list_chapters)
 
