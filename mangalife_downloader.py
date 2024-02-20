@@ -204,7 +204,7 @@ def download_manga(url_manga: str) -> None:
 def search() -> str:
     """ function that search for a manga in the database """
     raw_input.clear()
-    print("Downloading list of manga chapters..")
+    print("Downloading the list of mangas..")
     response = requests.get("https://www.manga4life.com/search/", timeout=10)
     if response.status_code != 200:
         print("Cannot reach the server.")
