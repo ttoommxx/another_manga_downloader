@@ -49,23 +49,23 @@ def printer(manga_name: str, number_chapters: int) -> None:
     """ function that updates the count of the executed chapters """
     if ENV.stop:
         return
-    print(f"- {manga_name}: 0 / {number_chapters} completed", end="\r")
     failed = []
-    for i in range(1, number_chapters+1):
+    ENV.print_queue.put(None)
+    for i in range(number_chapters+1):
         token = ENV.print_queue.get()
         if token == 1:
             return
         if token:
             failed.append(token)
-        print(f"- {manga_name}: {i} / {number_chapters} completed", end="\r")
+        print(f"- {manga_name}: {i} / {number_chapters} completed.", end="\r")
 
     print()
     if failed:
-        print("The following chapters have failed")
+        print("The following chapters have failed.")
         for chapter in failed:
             print(chapter)
     else:
-        print("No chapter has failed")
+        print("No chapter has failed.")
 
 
 def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
