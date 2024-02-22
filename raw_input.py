@@ -36,7 +36,8 @@ if os.name == "posix":
         return ch
 
     conv_arrows = {"D": "left", "C": "right", "A": "up", "B": "down"}
-    def get_key() -> str:
+
+def get_key() -> str:
         """ process correct string for keyboard input """
         key_pressed = getch()
         match key_pressed:
@@ -62,7 +63,8 @@ elif os.name == "nt":
             return letter
 
     conv_arrows = {"K": "left", "M": "right", "H": "up", "P": "down"}
-    def get_key() -> str:
+
+def get_key() -> str:
         """ process correct string for keyboard input """
         key_pressed = getch()
         match key_pressed:
