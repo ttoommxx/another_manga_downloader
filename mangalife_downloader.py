@@ -8,13 +8,13 @@ import ast
 import signal
 from zipfile import ZipFile
 from itertools import islice
+from typing import Any, NoReturn
 import requests
 import raw_input
-from typing import Any, NoReturn
 
 
 class Environment:
-    """ class that defined environment variables """
+    """class that defined environment variables"""
 
     def __init__(self) -> NoReturn:
         self.max_processes = min(os.cpu_count(), 8)
@@ -24,38 +24,38 @@ class Environment:
 
     @property
     def stop(self) -> int:
-        """ return stopping value """
+        """return stopping value"""
         return self._stop.value
 
     @stop.setter
     def stop(self, val: Any) -> NoReturn:
-        """ setter for stop multiprocessing value """
+        """setter for stop multiprocessing value"""
         self._stop = val
 
     def set_child_process(self) -> NoReturn:
-        """ initialiser for secondary processes """
+        """initialiser for secondary processes"""
         signal.signal(signal.SIGINT, lambda *args: None)
 
     def sigint_handler(self, sig, frame) -> NoReturn:
-        """ signal keyboard interrupt handler """
+        """signal keyboard interrupt handler"""
         print("\nQuitting..")
         self.print_queue.put(1)
         self._stop.value = 1
 
     def quit(self) -> NoReturn:
-        """ quit environment """
+        """quit environment"""
         self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
 
 
 def printer(manga_name: str, number_chapters: int) -> NoReturn:
-    """ function that updates the count of the executed chapters """
+    """function that updates the count of the executed chapters"""
     if ENV.stop:
         return
     failed = []
     ENV.print_queue.put(None)
-    for i in range(number_chapters+1):
+    for i in range(number_chapters + 1):
         token = ENV.print_queue.get()
         if token == 1:
             return
@@ -73,8 +73,8 @@ def printer(manga_name: str, number_chapters: int) -> NoReturn:
 
 
 def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoReturn:
-    """ given path and chapter_path, create the zip file
-    add a token to the queue when the process is done """
+    """given path and chapter_path, create the zip file
+    add a token to the queue when the process is done"""
     if ENV.stop:
         return
 
@@ -100,21 +100,28 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoRetu
             url_page = f"https://www.manga4life.com/read-online/{
                 manga_name}-chapter-{chapter_number}{index}-page-{page_number}.html"
             response = requests.get(url_page, timeout=10)
-            if response.status_code != 200 or "<title>404 Page Not Found</title>" in response.text:
+            if (
+                response.status_code != 200
+                or "<title>404 Page Not Found</title>" in response.text
+            ):
                 break
 
             # web scaping
             page_text = response.text
             server_name = re.findall(
                 r"vm.CurPathName = \"(.*)\";", page_text)[0]
-            server_directory = re.findall(
-                r'vm.CurChapter = (.*);', page_text)[0].replace("null", "None")
+            server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
+                0
+            ].replace("null", "None")
             server_directory = ast.literal_eval(server_directory)
             chap_num = server_directory["Chapter"]
-            chap_num = chap_num[1:-
-                                1] if chap_num[-1] == "0" else chap_num[1:-1]+"."+chap_num[-1]
+            chap_num = (
+                chap_num[1:-1]
+                if chap_num[-1] == "0"
+                else chap_num[1:-1] + "." + chap_num[-1]
+            )
             chap_dir = server_directory["Directory"]
-            chap_dir = chap_dir+"/" if chap_dir else chap_dir
+            chap_dir = chap_dir + "/" if chap_dir else chap_dir
             image_link = f"https://{server_name}/manga/{manga_name}/{
                 chap_dir}{chap_num}-{page_number:03d}.png"
             response = requests.get(image_link, stream=True, timeout=10)
@@ -158,7 +165,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoRetu
 
 
 def download_manga(url_manga: str) -> NoReturn:
-    """ main function """
+    """main function"""
     if ENV.stop:
         return
     if not url_manga.startswith("https://www.manga4life.com/"):
@@ -175,15 +182,18 @@ def download_manga(url_manga: str) -> NoReturn:
         print(e)
         return
     if response.status_code != 200:
-        print(f"Failed retrieving {
-              manga_name} with the following response status code:")
+        print(
+            f"Failed retrieving {
+                manga_name} with the following response status code:"
+        )
         print(response.status_code)
         return
     html_string = response.text
     manga_name_display = re.findall(
         r"<title>(.*) \| MangaLife</title>", html_string)[0]
-    chapters_string = re.findall(
-        r"vm.Chapters = (.*);", html_string)[0].replace("null", "None")
+    chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
+        "null", "None"
+    )
     list_chapters = ast.literal_eval(chapters_string)
 
     # create folder if does not exists
@@ -200,12 +210,13 @@ def download_manga(url_manga: str) -> NoReturn:
 
     # start processing pool
     pool = multiprocessing.Pool(
-        processes=ENV.max_processes, initializer=ENV.set_child_process)
+        processes=ENV.max_processes, initializer=ENV.set_child_process
+    )
 
     # send all the processes to a pool
-    printer_thread = threading.Thread(target=printer,
-                                      daemon=True,
-                                      args=(manga_name_display, number_chapters))
+    printer_thread = threading.Thread(
+        target=printer, daemon=True, args=(manga_name_display, number_chapters)
+    )
     printer_thread.start()
     pool.starmap(download_and_zip, list_chapters)
 
@@ -215,7 +226,7 @@ def download_manga(url_manga: str) -> NoReturn:
 
 
 def search() -> str:
-    """ function that search for a manga in the database """
+    """function that search for a manga in the database"""
     raw_input.clear()
     print("Downloading the list of mangas..")
     response = requests.get("https://www.manga4life.com/search/", timeout=10)
@@ -223,12 +234,16 @@ def search() -> str:
         print("Cannot reach the server.")
         return ""
     page_text = response.text
-    list_mangas = re.findall(r'vm.Directory = (.*);', page_text)[0]
-    list_mangas = list_mangas.replace("null", "None").replace(
-        "false", "False").replace("true", "True")
+    list_mangas = re.findall(r"vm.Directory = (.*);", page_text)[0]
+    list_mangas = (
+        list_mangas.replace("null", "None")
+        .replace("false", "False")
+        .replace("true", "True")
+    )
     list_mangas = ast.literal_eval(list_mangas)
-    list_mangas = [(entry["i"], entry["s"], entry["s"].lower())
-                   for entry in list_mangas]
+    list_mangas = [
+        (entry["i"], entry["s"], entry["s"].lower()) for entry in list_mangas
+    ]
     # first entry-url, second entry-display, third entry-search
     list_mangas.sort()
 
@@ -239,21 +254,22 @@ def search() -> str:
         print("Press tab to exit.")
         print("=", word_display)
 
-        rows_len = os.get_terminal_size().lines-3
+        rows_len = os.get_terminal_size().lines - 3
         columns_len = os.get_terminal_size().columns
 
         word_search = word_display.lower().replace(" ", r".*")
         search_list = (
-            entry for entry in list_mangas if re.search(word_search, entry[2]))
+            entry for entry in list_mangas if re.search(word_search, entry[2])
+        )
         search_list = list(islice(search_list, rows_len))
 
         # adjust the index
-        index = min(index, max(len(search_list)-1, 0))
+        index = min(index, max(len(search_list) - 1, 0))
 
         for i, entry in enumerate(search_list):
             title = entry[1]
-            if len(title) > columns_len-2:
-                title = title[:columns_len-5] + "..."
+            if len(title) > columns_len - 2:
+                title = title[: columns_len - 5] + "..."
             pre = "-" if i == index else " "
             print(pre, title)
 
@@ -268,7 +284,7 @@ def search() -> str:
             if index:
                 index -= 1
         elif button == "down":
-            if index <= rows_len-2:
+            if index <= rows_len - 2:
                 index += 1
         elif button == "left" or button == "right":
             pass
@@ -279,8 +295,9 @@ def search() -> str:
 if __name__ == "__main__":
     ENV = Environment()
 
-    parser = argparse.ArgumentParser(prog="mangalife_downloader",
-                                     description="download manga from mangalife")
+    parser = argparse.ArgumentParser(
+        prog="mangalife_downloader", description="download manga from mangalife"
+    )
     parser.add_argument("-u", "--urls", nargs="+")
     args = parser.parse_args()  # args.picker contains the modality
 

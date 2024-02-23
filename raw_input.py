@@ -1,4 +1,5 @@
 """ cross platofrm module to handle raw input from terminal """
+
 import os
 import sys
 
@@ -13,19 +14,23 @@ else:
 
 # CLEAN TERMINAL
 if os.name == "posix":
+
     def clear():
-        """ clear screen """
+        """clear screen"""
         os.system("clear")
+
 elif os.name == "nt":
+
     def clear():
-        """ clear screen """
+        """clear screen"""
         os.system("cls")
 
 
 # FETCH KEYBOARD INPUT
 if os.name == "posix":
+
     def getch() -> str:
-        """ read raw terminal input """
+        """read raw terminal input"""
         fd = sys.stdin.fileno()
         old_settings = termios.tcgetattr(fd)
         try:
@@ -38,7 +43,7 @@ if os.name == "posix":
     conv_arrows = {"D": "left", "C": "right", "A": "up", "B": "down"}
 
     def get_key() -> str:
-        """ process correct string for keyboard input """
+        """process correct string for keyboard input"""
         key_pressed = getch()
         match key_pressed:
             case "\r":
@@ -54,18 +59,19 @@ if os.name == "posix":
                 return key_pressed
 
 elif os.name == "nt":
+
     def getch() -> str:
-        """ read raw terminal input """
+        """read raw terminal input"""
         letter = getch_encoded()
         try:
-            return letter.decode('ascii')
+            return letter.decode("ascii")
         except:
             return letter
 
     conv_arrows = {"K": "left", "M": "right", "H": "up", "P": "down"}
 
     def get_key() -> str:
-        """ process correct string for keyboard input """
+        """process correct string for keyboard input"""
         key_pressed = getch()
         match key_pressed:
             case "\r":
