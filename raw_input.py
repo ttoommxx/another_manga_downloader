@@ -52,6 +52,7 @@ if os.name == "posix":
                 return "backspace"
             case _:
                 return key_pressed
+
 elif os.name == "nt":
     def getch() -> str:
         """ read raw terminal input """
