@@ -16,7 +16,7 @@ import raw_input
 class Environment:
     """class that defined environment variables"""
 
-    def __init__(self) -> NoReturn:
+    def __init__(self):
         self.max_processes = min(os.cpu_count(), 8)
         self.manager = multiprocessing.Manager()
         self._stop = multiprocessing.Value("i", 0)
