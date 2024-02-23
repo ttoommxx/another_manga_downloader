@@ -82,8 +82,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoRetu
     chapter_number = str(int(chapter_name_number[1:-1]))
     if chapter_name_number[-1] != "0":
         chapter_number += "." + str(chapter_name_number[-1])
-    index = "-index-" + \
-        chapter_name_number[0] if chapter_name_number[0] != "1" else ""
+    index = "-index-" + chapter_name_number[0] if chapter_name_number[0] != "1" else ""
 
     chapter_path = os.path.join(folder_path, chapter_name_number)
     zip_path = chapter_path + ".cbz"
@@ -108,8 +107,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoRetu
 
             # web scaping
             page_text = response.text
-            server_name = re.findall(
-                r"vm.CurPathName = \"(.*)\";", page_text)[0]
+            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
             server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
                 0
             ].replace("null", "None")
@@ -189,23 +187,20 @@ def download_manga(url_manga: str) -> NoReturn:
         print(response.status_code)
         return
     html_string = response.text
-    manga_name_display = re.findall(
-        r"<title>(.*) \| MangaLife</title>", html_string)[0]
+    manga_name_display = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
     chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
         "null", "None"
     )
     list_chapters = ast.literal_eval(chapters_string)
 
     # create folder if does not exists
-    mangas_path = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), "Mangas")
+    mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
     folder_path = os.path.join(mangas_path, manga_name_display)
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
-    list_chapters = [[chapter, folder_path, manga_name]
-                     for chapter in list_chapters]
+    list_chapters = [[chapter, folder_path, manga_name] for chapter in list_chapters]
     number_chapters = len(list_chapters)
 
     # start processing pool
