@@ -10,12 +10,13 @@ from zipfile import ZipFile
 from itertools import islice
 import requests
 import raw_input
+from typing import Any, NoReturn
 
 
 class Environment:
     """ class that defined environment variables """
 
-    def __init__(self):
+    def __init__(self) -> NoReturn:
         self.max_processes = min(os.cpu_count(), 8)
         self.manager = multiprocessing.Manager()
         self._stop = multiprocessing.Value("i", 0)
@@ -27,28 +28,28 @@ class Environment:
         return self._stop.value
 
     @stop.setter
-    def stop(self, val) -> None:
+    def stop(self, val: Any) -> NoReturn:
         """ setter for stop multiprocessing value """
         self._stop = val
 
-    def set_child_process(self) -> None:
+    def set_child_process(self) -> NoReturn:
         """ initialiser for secondary processes """
         signal.signal(signal.SIGINT, lambda *args: None)
 
-    def sigint_handler(self, sig, frame) -> None:
+    def sigint_handler(self, sig, frame) -> NoReturn:
         """ signal keyboard interrupt handler """
         print("\nQuitting..")
         self.print_queue.put(1)
         self._stop.value = 1
 
-    def quit(self) -> None:
+    def quit(self) -> NoReturn:
         """ quit environment """
         self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
 
 
-def printer(manga_name: str, number_chapters: int) -> None:
+def printer(manga_name: str, number_chapters: int) -> NoReturn:
     """ function that updates the count of the executed chapters """
     if ENV.stop:
         return
@@ -71,7 +72,7 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
+def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoReturn:
     """ given path and chapter_path, create the zip file
     add a token to the queue when the process is done """
     if ENV.stop:
@@ -156,7 +157,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
     ENV.print_queue.put(failed_number)
 
 
-def download_manga(url_manga: str) -> None:
+def download_manga(url_manga: str) -> NoReturn:
     """ main function """
     if ENV.stop:
         return
