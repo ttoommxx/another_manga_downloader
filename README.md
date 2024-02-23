@@ -1,5 +1,14 @@
 # mangalife_downloader 0.8
 
-Run `python mangalife_downloader` followed by the URLS of the Mangas you want to download from manga4life.
+I know, here is another python script to download mangas from the internet.. well, this one is small sized, and fast.
 
-If the script is run as is, it will prompt searching in the terminal, otherwise provide the URLs via the flag "-u".
+## installation
+
+Download `mangalife_downloader.py` and `raw_input.py`, either manually or by cloning the repo `git clone https://github.com/ttoommxx/mangalife_downloader`.
+Requires Python >= 3.10.
+
+## usage
+
+Run `python mangalife_downloader.py` and search for the manga to download.
+
+Alternatively, run `python mangalife_downloader.py -u` followed by the URLS of the Mangas you want to download from manga4life.
