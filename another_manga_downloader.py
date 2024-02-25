@@ -7,9 +7,11 @@ import re
 import ast
 import signal
 from zipfile import ZipFile
-from itertools import islice
 import requests
 import raw_input
+from manga_websites import mangas
+
+# environment variables
 
 
 class Environment:
@@ -52,6 +54,9 @@ class Environment:
             print("\nProgram terminated, re-run to resume.")
 
 
+# functions
+
+
 def printer(manga_name: str, number_chapters: int) -> None:
     """function that updates the count of the executed chapters"""
     if ENV.stop:
@@ -75,13 +80,14 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
+def download_and_zip(
+    chapter_name_number: str, folder_path: str, manga_name: str
+) -> None:
     """given path and chapter_path, create the zip file
     add a token to the queue when the process is done"""
     if ENV.stop:
         return
 
-    chapter_name_number = chapter["Chapter"]
     chapter_number = str(int(chapter_name_number[1:-1]))
     if chapter_name_number[-1] != "0":
         chapter_number += "." + str(chapter_name_number[-1])
@@ -165,45 +171,21 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
     ENV.print_queue.put(failed_number)
 
 
-def download_manga(url_manga: str) -> None:
+def download_manga(manga_obj) -> None:
     """main function"""
     if ENV.stop:
         return
-    if not url_manga.startswith("https://www.manga4life.com/"):
-        print(url_manga)
-        print("is not manga4life website.")
-        return
-
-    # fetch url and chapters data
-    manga_name = url_manga.split("/")[-1]
-    try:
-        response = requests.get(url_manga, timeout=10)
-    except requests.exceptions.RequestException as e:
-        print(f"Failed retrieving {manga_name} with the following error:")
-        print(e)
-        return
-    if response.status_code != 200:
-        print(
-            f"Failed retrieving {
-                manga_name} with the following response status code:"
-        )
-        print(response.status_code)
-        return
-    html_string = response.text
-    manga_name_display = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
-    chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
-        "null", "None"
-    )
-    list_chapters = ast.literal_eval(chapters_string)
 
     # create folder if does not exists
     mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
-    folder_path = os.path.join(mangas_path, manga_name_display)
+    folder_path = os.path.join(mangas_path, manga_obj.name_display)
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
-    list_chapters = [[chapter, folder_path, manga_name] for chapter in list_chapters]
+    list_chapters = [
+        [chapter, folder_path, manga_obj.name] for chapter in manga_obj.list_chapters
+    ]
     number_chapters = len(list_chapters)
 
     # start processing pool
@@ -213,7 +195,7 @@ def download_manga(url_manga: str) -> None:
 
     # send all the processes to a pool
     printer_thread = threading.Thread(
-        target=printer, daemon=True, args=(manga_name_display, number_chapters)
+        target=printer, daemon=True, args=(manga_obj.name_display, number_chapters)
     )
     printer_thread.start()
     pool.starmap(download_and_zip, list_chapters)
@@ -223,27 +205,14 @@ def download_manga(url_manga: str) -> None:
     printer_thread.join()
 
 
+# manga_website = "manganato"
+manga_website = "mangalife"
+
+
 def search() -> str:
     """function that search for a manga in the database"""
     raw_input.clear()
     print("Downloading the list of mangas..")
-    response = requests.get("https://www.manga4life.com/search/", timeout=10)
-    if response.status_code != 200:
-        print("Cannot reach the server.")
-        return ""
-    page_text = response.text
-    list_mangas = re.findall(r"vm.Directory = (.*);", page_text)[0]
-    list_mangas = (
-        list_mangas.replace("null", "None")
-        .replace("false", "False")
-        .replace("true", "True")
-    )
-    list_mangas = ast.literal_eval(list_mangas)
-    list_mangas = [
-        (entry["i"], entry["s"], entry["s"].lower()) for entry in list_mangas
-    ]
-    # first entry-url, second entry-display, third entry-search
-    list_mangas.sort()
 
     index = 0
     word_display = ""
@@ -255,17 +224,12 @@ def search() -> str:
         rows_len = os.get_terminal_size().lines - 3
         columns_len = os.get_terminal_size().columns
 
-        word_search = word_display.lower().replace(" ", r".*")
-        search_list = (
-            entry for entry in list_mangas if re.search(word_search, entry[2])
-        )
-        search_list = list(islice(search_list, rows_len))
+        print_list = mangas[manga_website].print_list(word_display, rows_len)
 
         # adjust the index
-        index = min(index, max(len(search_list) - 1, 0))
+        index = min(index, max(len(print_list) - 1, 0))
 
-        for i, entry in enumerate(search_list):
-            title = entry[1]
+        for i, title in enumerate(print_list):
             if len(title) > columns_len - 2:
                 title = title[: columns_len - 5] + "..."
             pre = "-" if i == index else " "
@@ -273,11 +237,11 @@ def search() -> str:
 
         button = raw_input.getkey()
         if button == "enter":
-            return f"https://www.manga4life.com/manga/{search_list[index][0]}"
+            return mangas[manga_website].create_manga_obj(index)
         elif button == "backspace":
             word_display = word_display[:-1]
         elif button == "tab":
-            return ""
+            return None
         elif button == "up":
             if index:
                 index -= 1
@@ -304,12 +268,16 @@ if __name__ == "__main__":
     if args.urls:
         print("Press CTRL+C to quit.")
         for url in args.urls:
-            download_manga(url)
+            if url.startswith("https://www.manga4life.com/"):
+                download_manga(url)
+            else:
+                print(url)
+                print("is not manga4life website.")
     else:
-        url = search()
+        manga_obj = search()
         raw_input.clear()
-        if url:
+        if manga_obj:
             print("Press CTRL+C to quit.")
-            download_manga(url)
+            download_manga(manga_obj)
 
     ENV.quit()
