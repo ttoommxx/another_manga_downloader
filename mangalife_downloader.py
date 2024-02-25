@@ -35,6 +35,10 @@ class Environment:
         """initialiser for secondary processes"""
         signal.signal(signal.SIGINT, lambda *args: None)
 
+    def set_main(self) -> None:
+        """set process as main"""
+        signal.signal(signal.SIGINT, self.sigint_handler)
+
     def sigint_handler(self, sig, frame) -> None:
         """signal keyboard interrupt handler"""
         print("\nQuitting..")
@@ -295,7 +299,7 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--urls", nargs="+")
     args = parser.parse_args()  # args.picker contains the modality
 
-    signal.signal(signal.SIGINT, ENV.sigint_handler)
+    ENV.set_main()
 
     if args.urls:
         print("Press CTRL+C to quit.")
