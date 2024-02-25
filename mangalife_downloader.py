@@ -268,7 +268,7 @@ def search() -> str:
             pre = "-" if i == index else " "
             print(pre, title)
 
-        button = raw_input.get_key()
+        button = raw_input.getkey()
         if button == "enter":
             return f"https://www.manga4life.com/manga/{search_list[index][0]}"
         elif button == "backspace":
