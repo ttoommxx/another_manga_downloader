@@ -8,7 +8,6 @@ import ast
 import signal
 from zipfile import ZipFile
 from itertools import islice
-from typing import Any, NoReturn
 import requests
 import raw_input
 
@@ -28,28 +27,28 @@ class Environment:
         return self._stop.value
 
     @stop.setter
-    def stop(self, val: Any) -> NoReturn:
+    def stop(self, val) -> None:
         """setter for stop multiprocessing value"""
         self._stop = val
 
-    def set_child_process(self) -> NoReturn:
+    def set_child_process(self) -> None:
         """initialiser for secondary processes"""
         signal.signal(signal.SIGINT, lambda *args: None)
 
-    def sigint_handler(self, sig, frame) -> NoReturn:
+    def sigint_handler(self, sig, frame) -> None:
         """signal keyboard interrupt handler"""
         print("\nQuitting..")
         self.print_queue.put(1)
         self._stop.value = 1
 
-    def quit(self) -> NoReturn:
+    def quit(self) -> None:
         """quit environment"""
         self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
 
 
-def printer(manga_name: str, number_chapters: int) -> NoReturn:
+def printer(manga_name: str, number_chapters: int) -> None:
     """function that updates the count of the executed chapters"""
     if ENV.stop:
         return
@@ -72,7 +71,7 @@ def printer(manga_name: str, number_chapters: int) -> NoReturn:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoReturn:
+def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> None:
     """given path and chapter_path, create the zip file
     add a token to the queue when the process is done"""
     if ENV.stop:
@@ -162,7 +161,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga_name: str) -> NoRetu
     ENV.print_queue.put(failed_number)
 
 
-def download_manga(url_manga: str) -> NoReturn:
+def download_manga(url_manga: str) -> None:
     """main function"""
     if ENV.stop:
         return
