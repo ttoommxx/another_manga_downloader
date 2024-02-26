@@ -36,6 +36,11 @@ class Mangalife:
         self.search_list = []
         self.current_word_search = ""
 
+    @classmethod
+    def decode_chapter_name(cls, chapter: str) -> str:
+        """decode chapter name from chapter"""
+        return chapter
+
     def print_list(self, word_search: str, max_len: int = 100):
         """return list of mangas"""
         word_search_patter = word_search.lower().replace(" ", r".*")
@@ -59,33 +64,70 @@ class Mangalife:
         return self.search_list
 
     def create_manga_obj(self, index: int) -> str:
-        """fetch url to the manga page"""
+        """create manga obj with various attributes"""
         url_completion = self.search_list_raw[index][0]
         url_manga = f"https://www.manga4life.com/manga/{ url_completion }"
 
-        name = url_manga.split("/")[-1]
-        try:
-            response = requests.get(url_manga, timeout=10)
-        except requests.exceptions.RequestException as e:
-            print(f"Failed retrieving {name} with the following error:")
-            print(e)
-            return None
+        response = requests.get(url_manga, timeout=10)
         if response.status_code != 200:
             print(
                 f"Failed retrieving {
-                    name} with the following response status code:"
+                    url_manga} with the following response status code:"
             )
             print(response.status_code)
             return None
         html_string = response.text
-        name_display = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
+        name = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
         chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
             "null", "None"
         )
         list_chapters = ast.literal_eval(chapters_string)
         list_chapters = [chapter["Chapter"] for chapter in list_chapters]
 
-        return Manga(name, name_display, list_chapters)
+        return Manga("mangalife", name, list_chapters)
+
+    def img_generator(self, chapter: str, manga_obj):
+        """create a generator for pages in chapter"""
+
+        chapter_number = str(int(chapter[1:-1]))
+        if chapter[-1] != "0":
+            chapter_number += "." + str(chapter[-1])
+        index = "-index-" + chapter[0] if chapter[0] != "1" else ""
+
+        page_number = 0
+        while True:
+            page_number += 1
+            url_page = f"https://www.manga4life.com/read-online/{
+                manga_obj.name}-chapter-{chapter_number}{index}-page-{page_number}.html"
+            response = requests.get(url_page, timeout=10)
+            if (
+                response.status_code != 200
+                or "<title>404 Page Not Found</title>" in response.text
+            ):
+                break
+
+            # web scaping
+            page_text = response.text
+            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
+            server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
+                0
+            ].replace("null", "None")
+            server_directory = ast.literal_eval(server_directory)
+            chap_num = server_directory["Chapter"]
+            chap_num = (
+                chap_num[1:-1]
+                if chap_num[-1] == "0"
+                else chap_num[1:-1] + "." + chap_num[-1]
+            )
+            chap_dir = server_directory["Directory"]
+            chap_dir = chap_dir + "/" if chap_dir else chap_dir
+            image_link = f"https://{server_name}/manga/{manga_obj.name}/{
+                chap_dir}{chap_num}-{page_number:03d}.png"
+            response = requests.get(image_link, stream=True, timeout=10)
+            if response.status_code != 200:
+                break
+
+            yield f"{page_number:03d}", response
 
 
 class Manganato:
@@ -95,6 +137,20 @@ class Manganato:
         self.search_list_raw = []
         self.search_list = []
         self.current_word_search = ""
+
+    @classmethod
+    def decode_chapter_name(cls, chapter: str) -> str:
+        """decode chapter name from chapter"""
+        chapter_name = chapter.split("/")[-1]
+        chapter_num = chapter_name.split("-")[-1]
+        if "." in chapter_num:
+            chapter_num, chapter_dot = chapter_num.split(".")
+        else:
+            chapter_dot = None
+        chapter_num = int(chapter_num)
+        chapter_name = f"{chapter_num:04d}{'.'+chapter_dot if chapter_dot else ''}"
+
+        return chapter_name
 
     def print_list(self, word_search: str, max_len: int = 100) -> list:
         """return list of mangas"""
@@ -133,18 +189,51 @@ class Manganato:
         return self.search_list
 
     def create_manga_obj(self, index: int) -> str:
-        """fetch url to the manga page"""
-
+        """create manga obj with various attributes"""
         url_manga = self.search_list_raw[index][0]
+        response = requests.get(url_manga, timeout=10)
+        if response.status_code != 200:
+            print(
+                f"Failed retrieving {
+                    url_manga} with the following response status code:"
+            )
+            print(response.status_code)
+            return None
+        html_string = response.text
+
+        list_chapters = re.findall(
+            r'<a rel="nofollow" class="chapter-name text-nowrap" href="(.*?)" title="',
+            html_string,
+        )  # question mark makes it into lazy search
+        name = re.findall(
+            r"<title>(.*) Manga Online Free - Manganato</title>", html_string
+        )[0]
+        input(name)
+
+        return Manga("manganato", name, list_chapters)
+
+    def img_generator(self, chapter: str, manga_obj):
+        """create a generator for pages in chapter"""
+
+        response = requests.get(chapter, timeout=10)
+        if response.status_code == 200:
+            html_string = response.text
+            images = re.findall('<img src="(.*?)(?<=\.jpg)"', html_string)
+
+        for image_link in images:
+            print(image_link)
+            response = requests.get(image_link, stream=True, timeout=10)
+            page_number = image_link.split("/")[-1].split("-")[0]
+            yield f"{page_number:03}", response
 
 
 class Manga:
     """class to save information about manga"""
 
-    def __init__(self, name, name_display, list_chapters):
+    def __init__(self, website, name, list_chapters):
+        self.website = website
         self.name = name
-        self.name_display = name_display
         self.list_chapters = list_chapters
 
 
-mangas = {"mangalife": Mangalife(), "manganato": Manganato()}
+get_manga = {"mangalife": Mangalife(), "manganato": Manganato()}

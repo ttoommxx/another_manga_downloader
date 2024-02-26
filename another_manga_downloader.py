@@ -3,13 +3,10 @@ import os
 import argparse
 import multiprocessing
 import threading
-import re
-import ast
 import signal
 from zipfile import ZipFile
-import requests
 import raw_input
-from manga_websites import mangas
+from manga_websites import get_manga
 
 # environment variables
 
@@ -80,20 +77,14 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(
-    chapter_name_number: str, folder_path: str, manga_name: str
-) -> None:
+def download_and_zip(chapter: str, folder_path: str, manga_obj) -> None:
     """given path and chapter_path, create the zip file
     add a token to the queue when the process is done"""
     if ENV.stop:
         return
+    chapter_name = get_manga[manga_obj.website].decode_chapter_name(chapter)
 
-    chapter_number = str(int(chapter_name_number[1:-1]))
-    if chapter_name_number[-1] != "0":
-        chapter_number += "." + str(chapter_name_number[-1])
-    index = "-index-" + chapter_name_number[0] if chapter_name_number[0] != "1" else ""
-
-    chapter_path = os.path.join(folder_path, chapter_name_number)
+    chapter_path = os.path.join(folder_path, chapter_name)
     zip_path = chapter_path + ".cbz"
 
     failed_number = None
@@ -102,40 +93,10 @@ def download_and_zip(
 
         # DOWNLOAD
         pages = []
-        page_number = 0
-        while True:
-            page_number += 1
-            url_page = f"https://www.manga4life.com/read-online/{
-                manga_name}-chapter-{chapter_number}{index}-page-{page_number}.html"
-            response = requests.get(url_page, timeout=10)
-            if (
-                response.status_code != 200
-                or "<title>404 Page Not Found</title>" in response.text
-            ):
-                break
-
-            # web scaping
-            page_text = response.text
-            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
-            server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
-                0
-            ].replace("null", "None")
-            server_directory = ast.literal_eval(server_directory)
-            chap_num = server_directory["Chapter"]
-            chap_num = (
-                chap_num[1:-1]
-                if chap_num[-1] == "0"
-                else chap_num[1:-1] + "." + chap_num[-1]
-            )
-            chap_dir = server_directory["Directory"]
-            chap_dir = chap_dir + "/" if chap_dir else chap_dir
-            image_link = f"https://{server_name}/manga/{manga_name}/{
-                chap_dir}{chap_num}-{page_number:03d}.png"
-            response = requests.get(image_link, stream=True, timeout=10)
-            if response.status_code != 200:
-                break
-
-            file_path = os.path.join(chapter_path, f"{page_number:03d}.png")
+        for page_str, response in get_manga[manga_obj.website].img_generator(
+            chapter, manga_obj
+        ):
+            file_path = os.path.join(chapter_path, page_str + ".png")
             if not os.path.exists(file_path):
                 # open the file in binary write mode
                 with open(file_path, "wb") as page:
@@ -166,7 +127,7 @@ def download_and_zip(
 
         # save chapter name is fail
         if not os.path.exists(zip_path):
-            failed_number = chapter_name_number
+            failed_number = chapter_name
 
     ENV.print_queue.put(failed_number)
 
@@ -179,12 +140,12 @@ def download_manga(manga_obj) -> None:
     # create folder if does not exists
     mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
-    folder_path = os.path.join(mangas_path, manga_obj.name_display)
+    folder_path = os.path.join(mangas_path, manga_obj.name)
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
     list_chapters = [
-        [chapter, folder_path, manga_obj.name] for chapter in manga_obj.list_chapters
+        [chapter, folder_path, manga_obj] for chapter in manga_obj.list_chapters
     ]
     number_chapters = len(list_chapters)
 
@@ -195,7 +156,7 @@ def download_manga(manga_obj) -> None:
 
     # send all the processes to a pool
     printer_thread = threading.Thread(
-        target=printer, daemon=True, args=(manga_obj.name_display, number_chapters)
+        target=printer, daemon=True, args=(manga_obj.name, number_chapters)
     )
     printer_thread.start()
     pool.starmap(download_and_zip, list_chapters)
@@ -205,8 +166,8 @@ def download_manga(manga_obj) -> None:
     printer_thread.join()
 
 
-# manga_website = "manganato"
-manga_website = "mangalife"
+manga_website = "manganato"
+# manga_website = "mangalife"
 
 
 def search() -> str:
@@ -224,7 +185,7 @@ def search() -> str:
         rows_len = os.get_terminal_size().lines - 3
         columns_len = os.get_terminal_size().columns
 
-        print_list = mangas[manga_website].print_list(word_display, rows_len)
+        print_list = get_manga[manga_website].print_list(word_display, rows_len)
 
         # adjust the index
         index = min(index, max(len(print_list) - 1, 0))
@@ -237,7 +198,7 @@ def search() -> str:
 
         button = raw_input.getkey()
         if button == "enter":
-            return mangas[manga_website].create_manga_obj(index)
+            return get_manga[manga_website].create_manga_obj(index)
         elif button == "backspace":
             word_display = word_display[:-1]
         elif button == "tab":
