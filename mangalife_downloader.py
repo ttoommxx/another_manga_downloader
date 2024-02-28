@@ -6,6 +6,7 @@ import threading
 import re
 import ast
 import signal
+import typing
 from zipfile import ZipFile
 from itertools import islice
 import requests
@@ -15,7 +16,7 @@ import raw_input
 class Environment:
     """class that defined environment variables"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_processes = min(os.cpu_count(), 8)
         self.manager = multiprocessing.Manager()
         self._stop = multiprocessing.Value("i", 0)
@@ -27,7 +28,7 @@ class Environment:
         return self._stop.value
 
     @stop.setter
-    def stop(self, val) -> None:
+    def stop(self, val: typing.Any) -> None:
         """setter for stop multiprocessing value"""
         self._stop = val
 
@@ -39,7 +40,7 @@ class Environment:
         """set process as main"""
         signal.signal(signal.SIGINT, self.sigint_handler)
 
-    def sigint_handler(self, sig, frame) -> None:
+    def sigint_handler(self, sig: typing.Any, frame: typing.Any) -> None:
         """signal keyboard interrupt handler"""
         print("\nQuitting..")
         self.print_queue.put(1)
