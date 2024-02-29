@@ -4,6 +4,7 @@ import argparse
 import multiprocessing
 import threading
 import signal
+import requests
 from zipfile import ZipFile
 import raw_input
 from manga_websites import get_manga, get_manga_website
@@ -93,12 +94,16 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
 
         # DOWNLOAD
         pages = []
-        for page_str, response in get_manga[manga["website"]].img_generator(
+        for page_str, image_link in get_manga[manga["website"]].img_generator(
             chapter, manga
         ):
             file_path = os.path.join(chapter_path, page_str + ".png")
             if not os.path.exists(file_path):
-                get_manga[manga["website"]].img_download(file_path, response)
+                response = requests.get(image_link, stream=True, timeout=10)
+                with open(file_path, "wb") as page:
+                    for chunk in response.iter_content(1024):
+                        page.write(chunk)
+
             if ENV.stop:
                 return
 

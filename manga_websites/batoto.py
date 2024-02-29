@@ -94,13 +94,4 @@ class Batoto:
         images = ast.literal_eval(pages_string)
 
         for page_number, image_link in enumerate(images):
-            response = requests.get(image_link, stream=True, timeout=10)
-
-            yield f"{page_number:03d}", response
-
-    def img_download(self, file_path: str, url_response) -> None:
-        """image url downloader"""
-
-        with open(file_path, "wb") as page:
-            for chunk in url_response.iter_content(1024):
-                page.write(chunk)
+            yield f"{page_number:03d}", image_link

@@ -89,7 +89,7 @@ class Mangalife:
         return manga
 
     def img_generator(self, chapter: str, manga: dict):
-        """create a generator for pages in chapter"""
+        """create a generator for pages numbers and their url in chapter"""
 
         chapter_name = chapter["name"]
         chapter_number = str(int(chapter_name[1:-1]))
@@ -127,15 +127,5 @@ class Mangalife:
             chap_dir = chap_dir + "/" if chap_dir else chap_dir
             image_link = f"https://{server_name}/manga/{manga["true name"]}/{
                 chap_dir}{chap_num}-{page_number:03d}.png"
-            response = requests.get(image_link, stream=True, timeout=10)
-            if response.status_code != 200:
-                break
 
-            yield f"{page_number:03d}", response
-
-    def img_download(self, file_path: str, url_response) -> None:
-        """image url downloader"""
-
-        with open(file_path, "wb") as page:
-            for chunk in url_response.iter_content(1024):
-                page.write(chunk)
+            yield f"{page_number:03d}", image_link
