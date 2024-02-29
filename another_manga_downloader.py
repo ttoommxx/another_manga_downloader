@@ -77,9 +77,10 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
-    """given path and chapter_path, create the zip file
+def download_and_zip(chapter: str, folder_path: str, manga: str) -> None:
+    """given a chapter and a path, create the zip file
     add a token to the queue when the process is done"""
+
     if ENV.stop:
         return
     chapter_name = get_manga[manga["website"]].decode_chapter_name(chapter)

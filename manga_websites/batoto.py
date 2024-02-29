@@ -80,6 +80,7 @@ class Batoto:
         list_chapters = re.findall(
             r'<a class=".*?" href="(.*?)" >\s*<b>(.*?)</b>', html_string
         )
+        print(list_chapters)
         name = re.findall(r"<title>(.*?) Manga</title>", html_string)[0]
 
         manga = {
