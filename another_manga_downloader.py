@@ -77,15 +77,16 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: str, folder_path: str, manga: str) -> None:
+def download_and_zip(chapter: str, folder_path: str) -> None:
     """given a chapter and a path, create the zip file
     add a token to the queue when the process is done"""
 
     if ENV.stop:
         return
-    chapter_name = get_manga[manga["website"]].decode_chapter_name(chapter)
 
-    chapter_path = os.path.join(folder_path, chapter_name)
+    manga = chapter["manga"]
+
+    chapter_path = os.path.join(folder_path, chapter["name"])
     zip_path = chapter_path + ".cbz"
 
     failed_number = None
@@ -125,7 +126,7 @@ def download_and_zip(chapter: str, folder_path: str, manga: str) -> None:
 
         # save chapter name is fail
         if not os.path.exists(zip_path):
-            failed_number = chapter_name
+            failed_number = chapter["name"]
 
     ENV.print_queue.put(failed_number)
 
@@ -142,9 +143,7 @@ def download_manga(manga: dict) -> None:
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
-    list_chapters = [
-        [chapter, folder_path, manga] for chapter in manga["list_chapters"]
-    ]
+    list_chapters = [[chapter, folder_path] for chapter in manga["list_chapters"]]
     number_chapters = len(list_chapters)
 
     # start processing pool

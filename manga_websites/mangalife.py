@@ -38,11 +38,6 @@ class Mangalife:
         list_mangas.sort()
         self.list_mangas = list_mangas
 
-    @classmethod
-    def decode_chapter_name(cls, chapter: str) -> str:
-        """decode chapter name from chapter"""
-        return chapter
-
     def print_list(self, word_search: str, max_len: int = 100):
         """return list of mangas"""
         word_search_patter = word_search.lower().replace(" ", r".*")
@@ -87,7 +82,6 @@ class Mangalife:
             "null", "None"
         )
         list_chapters = ast.literal_eval(chapters_string)
-        list_chapters = [chapter["Chapter"] for chapter in list_chapters]
 
         manga = {
             "website": "mangalife",
@@ -96,15 +90,20 @@ class Mangalife:
             "true name": url_manga.split("/")[-1],
         }
 
+        for chapter in list_chapters:
+            chapter["manga"] = manga
+            chapter["name"] = chapter["Chapter"]
+
         return manga
 
     def img_generator(self, chapter: str, manga: dict):
         """create a generator for pages in chapter"""
 
-        chapter_number = str(int(chapter[1:-1]))
-        if chapter[-1] != "0":
-            chapter_number += "." + str(chapter[-1])
-        index = "-index-" + chapter[0] if chapter[0] != "1" else ""
+        chapter_name = chapter["name"]
+        chapter_number = str(int(chapter_name[1:-1]))
+        if chapter_name[-1] != "0":
+            chapter_number += "." + chapter_name[-1]
+        index = "-index-" + chapter_name[0] if chapter_name[0] != "1" else ""
 
         page_number = 0
         while True:
