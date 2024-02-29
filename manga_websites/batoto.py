@@ -10,17 +10,10 @@ class Batoto:
     def __init__(self):
         self.list_mangas = []
         self.search_list = []
-        self.search_list_raw = []
         self.current_word_search = ""
 
     def load_database(self) -> None:
         """load the database of mangas"""
-
-    @classmethod
-    def decode_chapter_name(cls, chapter: str) -> str:
-        """decode chapter name from chapter"""
-
-        return chapter[1]
 
     def print_list(self, word_search: str, max_len: int = 100) -> list:
         """return list of mangas"""
@@ -28,12 +21,12 @@ class Batoto:
             self.current_word_search = word_search
             pattern = r'<a class="item-title" href="(.*?)" >(.*?)<span class="highlight-text">(.*?)</span>(.*?)</a>'
 
-            list_mangas = []
+            search_list = []
 
             page_number = 1
             page_text = ""
 
-            while len(list_mangas) < max_len:
+            while len(search_list) < max_len:
                 if page_number == 1:
                     response = requests.get(
                         f"https://bato.to/search?word={word_search}", timeout=10
@@ -52,21 +45,15 @@ class Batoto:
                 new_list = re.findall(pattern, page_text)
                 if not new_list:
                     break
-                list_mangas.extend(new_list)
+                search_list.extend(new_list)
                 page_number += 1
 
-            self.search_list_raw = list_mangas[:max_len]
-            self.search_list = ["".join(entry[1:]) for entry in self.search_list_raw]
+            self.search_list = [
+                ("".join(entry[1:]), f"https://bato.to{ entry[0] }")
+                for entry in search_list[:max_len]
+            ]
 
         return self.search_list
-
-    def index_to_url(self, index: int) -> str:
-        """convert index to url"""
-        if index < -1 or index >= len(self.search_list_raw):
-            return ""
-
-        url_manga = self.search_list_raw[index][0]
-        return f"https://bato.to{ url_manga }"
 
     def create_manga(self, url_manga: str) -> str:
         """create manga dictionary with various attributes"""
@@ -80,8 +67,11 @@ class Batoto:
         list_chapters = re.findall(
             r'<a class=".*?" href="(.*?)" >\s*<b>(.*?)</b>', html_string
         )
+        list_chapters = [
+            {"url": f"https://bato.to{chapter[0]}", "name": chapter[1]}
+            for chapter in list_chapters
+        ]
 
-        print(list_chapters)
         name = re.findall(r"<title>(.*?) Manga</title>", html_string)[0]
 
         manga = {
@@ -95,7 +85,7 @@ class Batoto:
     def img_generator(self, chapter: str, manga: dict):
         """create a generator for pages in chapter"""
 
-        chapter_url = f"https://bato.to{chapter[0]}"
+        chapter_url = chapter["url"]
 
         response = requests.get(chapter_url, timeout=10)
 

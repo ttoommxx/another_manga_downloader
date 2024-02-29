@@ -77,14 +77,12 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: str, folder_path: str) -> None:
+def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
     """given a chapter and a path, create the zip file
     add a token to the queue when the process is done"""
 
     if ENV.stop:
         return
-
-    manga = chapter["manga"]
 
     chapter_path = os.path.join(folder_path, chapter["name"])
     zip_path = chapter_path + ".cbz"
@@ -143,7 +141,9 @@ def download_manga(manga: dict) -> None:
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
-    list_chapters = [[chapter, folder_path] for chapter in manga["list_chapters"]]
+    list_chapters = [
+        [chapter, folder_path, manga] for chapter in manga["list_chapters"]
+    ]
     number_chapters = len(list_chapters)
 
     # start processing pool
@@ -184,7 +184,8 @@ def search(manga_website: str) -> dict:
         # adjust the index
         index = min(index, max(len(print_list) - 1, 0))
 
-        for i, title in enumerate(print_list):
+        for i, entry in enumerate(print_list):
+            title = entry[0]
             if len(title) > columns_len - 2:
                 title = title[: columns_len - 5] + "..."
             pre = "-" if i == index else " "
@@ -192,7 +193,7 @@ def search(manga_website: str) -> dict:
 
         button = raw_input.getkey()
         if button == "enter":
-            url_manga = get_manga[manga_website].index_to_url(index)
+            url_manga = print_list[index][1]
             return get_manga[manga_website].create_manga(url_manga)
         elif button == "backspace":
             word_display = word_display[:-1]

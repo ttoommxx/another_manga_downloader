@@ -10,7 +10,6 @@ class Mangalife:
 
     def __init__(self):
         self.list_mangas = []
-        self.search_list_raw = []
         self.search_list = []
         self.current_word_search = ""
 
@@ -51,22 +50,17 @@ class Mangalife:
                     for entry in self.list_mangas
                     if re.search(word_search_patter, entry[2])
                 )
-                self.search_list_raw = list(islice(search_iter, max_len))
+                search_list = list(islice(search_iter, max_len))
             except re.error:
-                self.search_list_raw = [
+                search_list = [
                     entry for entry in self.list_mangas if word_search in entry[2]
                 ]
-            self.search_list = [entry[1] for entry in self.search_list_raw]
+            self.search_list = [
+                (entry[1], f"https://www.manga4life.com/manga/{ entry[0] }")
+                for entry in search_list
+            ]
 
         return self.search_list
-
-    def index_to_url(self, index: int) -> str:
-        """convert index to url"""
-        if index < -1 or index >= len(self.search_list_raw):
-            return ""
-
-        url_completion = self.search_list_raw[index][0]
-        return f"https://www.manga4life.com/manga/{ url_completion }"
 
     def create_manga(self, url_manga: str) -> str:
         """create manga dictionary with various attributes"""
@@ -82,6 +76,8 @@ class Mangalife:
             "null", "None"
         )
         list_chapters = ast.literal_eval(chapters_string)
+        for chapter in list_chapters:
+            chapter["name"] = chapter["Chapter"]
 
         manga = {
             "website": "mangalife",
@@ -89,10 +85,6 @@ class Mangalife:
             "list_chapters": list_chapters,
             "true name": url_manga.split("/")[-1],
         }
-
-        for chapter in list_chapters:
-            chapter["manga"] = manga
-            chapter["name"] = chapter["Chapter"]
 
         return manga
 
