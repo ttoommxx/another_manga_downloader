@@ -14,7 +14,7 @@ class Mangalife:
         self.search_list = []
         self.current_word_search = ""
 
-    def load_database(self):
+    def load_database(self) -> None:
         """load the database of mangas"""
         print("Downloading mangalife database")
         response = requests.get("https://www.manga4life.com/search/", timeout=10)
@@ -67,20 +67,20 @@ class Mangalife:
 
     def index_to_url(self, index: int) -> str:
         """convert index to url"""
+        if index < -1 or index >= len(self.search_list_raw):
+            return ""
+
         url_completion = self.search_list_raw[index][0]
         return f"https://www.manga4life.com/manga/{ url_completion }"
 
     def create_manga(self, url_manga: str) -> str:
         """create manga dictionary with various attributes"""
 
-        response = requests.get(url_manga, timeout=10)
-        if response.status_code != 200:
-            print(
-                f"Failed retrieving {
-                    url_manga} with the following response status code:"
-            )
-            print(response.status_code)
+        if not url_manga:
             return None
+
+        response = requests.get(url_manga, timeout=10)
+
         html_string = response.text
         name = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
         chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
@@ -144,7 +144,7 @@ class Mangalife:
 
     def img_download(self, file_path: str, url_response) -> None:
         """image url downloader"""
-        # open the file in binary write mode
+
         with open(file_path, "wb") as page:
             for chunk in url_response.iter_content(1024):
                 page.write(chunk)
