@@ -16,4 +16,4 @@ Alternatively, run `python another_manga_downloader.py -u` followed by the URLS 
 # website supported
 
 - mangalife (https://www.manga4life.com/)
-- manganato (https://manganato.com/)
+- bato.to (https://bato.to/)
