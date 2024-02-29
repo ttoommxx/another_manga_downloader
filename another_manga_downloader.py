@@ -6,7 +6,7 @@ import threading
 import signal
 from zipfile import ZipFile
 import raw_input
-from manga_websites import get_manga
+from manga_websites import get_manga, get_manga_website
 
 # environment variables
 
@@ -77,12 +77,12 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: str, folder_path: str, manga_obj) -> None:
+def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
     """given path and chapter_path, create the zip file
     add a token to the queue when the process is done"""
     if ENV.stop:
         return
-    chapter_name = get_manga[manga_obj.website].decode_chapter_name(chapter)
+    chapter_name = get_manga[manga["website"]].decode_chapter_name(chapter)
 
     chapter_path = os.path.join(folder_path, chapter_name)
     zip_path = chapter_path + ".cbz"
@@ -93,15 +93,12 @@ def download_and_zip(chapter: str, folder_path: str, manga_obj) -> None:
 
         # DOWNLOAD
         pages = []
-        for page_str, response in get_manga[manga_obj.website].img_generator(
-            chapter, manga_obj
+        for page_str, response in get_manga[manga["website"]].img_generator(
+            chapter, manga
         ):
             file_path = os.path.join(chapter_path, page_str + ".png")
             if not os.path.exists(file_path):
-                # open the file in binary write mode
-                with open(file_path, "wb") as page:
-                    for chunk in response.iter_content(1024):
-                        page.write(chunk)
+                get_manga[manga["website"]].img_download(file_path, response)
             if ENV.stop:
                 return
 
@@ -132,7 +129,7 @@ def download_and_zip(chapter: str, folder_path: str, manga_obj) -> None:
     ENV.print_queue.put(failed_number)
 
 
-def download_manga(manga_obj) -> None:
+def download_manga(manga: dict) -> None:
     """main function"""
     if ENV.stop:
         return
@@ -140,12 +137,12 @@ def download_manga(manga_obj) -> None:
     # create folder if does not exists
     mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
-    folder_path = os.path.join(mangas_path, manga_obj.name)
+    folder_path = os.path.join(mangas_path, manga["name"])
     os.makedirs(folder_path, exist_ok=True)
 
     # add more to the list of chapters
     list_chapters = [
-        [chapter, folder_path, manga_obj] for chapter in manga_obj.list_chapters
+        [chapter, folder_path, manga] for chapter in manga["list_chapters"]
     ]
     number_chapters = len(list_chapters)
 
@@ -156,7 +153,7 @@ def download_manga(manga_obj) -> None:
 
     # send all the processes to a pool
     printer_thread = threading.Thread(
-        target=printer, daemon=True, args=(manga_obj.name, number_chapters)
+        target=printer, daemon=True, args=(manga["name"], number_chapters)
     )
     printer_thread.start()
     pool.starmap(download_and_zip, list_chapters)
@@ -166,14 +163,11 @@ def download_manga(manga_obj) -> None:
     printer_thread.join()
 
 
-manga_website = "manganato"
-# manga_website = "mangalife"
-
-
-def search() -> str:
+def search(manga_website: str) -> dict:
     """function that search for a manga in the database"""
+
+    get_manga[manga_website].load_database()
     raw_input.clear()
-    print("Downloading the list of mangas..")
 
     index = 0
     word_display = ""
@@ -198,7 +192,8 @@ def search() -> str:
 
         button = raw_input.getkey()
         if button == "enter":
-            return get_manga[manga_website].create_manga_obj(index)
+            url_manga = get_manga[manga_website].index_to_url(index)
+            return get_manga[manga_website].create_manga(url_manga)
         elif button == "backspace":
             word_display = word_display[:-1]
         elif button == "tab":
@@ -227,18 +222,30 @@ if __name__ == "__main__":
     ENV.set_main()
 
     if args.urls:
+        # FIX THIS, IT DOES NOT WORK ANYMORE WITH URL DIRECTLY, INTEGRATE IN THE OTHER FILE WITH MORE FUNCTIONS AND WRITE A TEMPLATE
         print("Press CTRL+C to quit.")
         for url in args.urls:
-            if url.startswith("https://www.manga4life.com/"):
-                download_manga(url)
-            else:
-                print(url)
-                print("is not manga4life website.")
+            MANGA_WEBSITE = get_manga_website(url)
+            if not MANGA_WEBSITE:
+                print("Manga website not identified")
+                continue
+            MANGA = get_manga[MANGA_WEBSITE].create_manga(url)
+            download_manga(MANGA)
+
     else:
-        manga_obj = search()
-        raw_input.clear()
-        if manga_obj:
-            print("Press CTRL+C to quit.")
-            download_manga(manga_obj)
+        print("Select the website you want to use")
+        manga_selection = list(get_manga.keys())
+        for num, key in enumerate(manga_selection):
+            print(num, "->", key)
+
+        INDEX = input()
+        if INDEX != "q" and INDEX.isdigit() and 0 <= int(INDEX) < len(manga_selection):
+            MANGA_WEBSITE = manga_selection[int(INDEX)]
+
+            MANGA = search(MANGA_WEBSITE)
+            raw_input.clear()
+            if MANGA:
+                print("Press CTRL+C to quit.")
+                download_manga(MANGA)
 
     ENV.quit()
