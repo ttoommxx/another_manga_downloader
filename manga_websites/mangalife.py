@@ -1,4 +1,5 @@
 """collection of manga websites and their attributes"""
+
 import re
 import ast
 from itertools import islice
@@ -8,15 +9,18 @@ import requests
 class Mangalife:
     """mangalife"""
 
-    def __init__(self):
+    def __init__(self, timeout: int):
         self.list_mangas = []
         self.search_list = []
         self.current_word_search = ""
+        self.timeout = timeout
 
     def load_database(self) -> None:
         """load the database of mangas"""
         print("Downloading mangalife database")
-        response = requests.get("https://www.manga4life.com/search/", timeout=10)
+        response = requests.get(
+            "https://www.manga4life.com/search/", timeout=self.timeout
+        )
 
         if response.status_code != 200:
             print("Cannot reach mangalife server.")
@@ -68,7 +72,7 @@ class Mangalife:
         if not url_manga:
             return None
 
-        response = requests.get(url_manga, timeout=10)
+        response = requests.get(url_manga, timeout=self.timeout)
 
         html_string = response.text
         name = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
@@ -102,16 +106,15 @@ class Mangalife:
             page_number += 1
             url_page = f"https://www.manga4life.com/read-online/{
                 manga["true name"]}-chapter-{chapter_number}{index}-page-{page_number}.html"
-            response = requests.get(url_page, timeout=10)
+            response = requests.get(url_page, timeout=self.timeout)
 
-            if (
-                response.status_code != 200
-                or "<title>404 Page Not Found</title>" in response.text
-            ):
+            if response.status_code != 200:
                 break
 
-            # web scaping
             page_text = response.text
+            if "<title>404 Page Not Found</title>" in response.text:
+                break
+
             server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
             server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
                 0

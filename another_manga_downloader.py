@@ -8,9 +8,11 @@ import signal
 from zipfile import ZipFile
 import requests
 import raw_input
-from manga_websites import get_manga, get_manga_website
+from manga_websites import create_manga_dict, get_manga_website
 
 # environment variables
+
+TIMEOUT = 100  # this variable can be changed
 
 
 class Environment:
@@ -21,6 +23,7 @@ class Environment:
         self.manager = multiprocessing.Manager()
         self._stop = multiprocessing.Value("i", 0)
         self.print_queue = self.manager.Queue()
+        self.get_manga = create_manga_dict(TIMEOUT)
 
     @property
     def stop(self) -> int:
@@ -95,7 +98,7 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
 
         # DOWNLOAD
         pages = []
-        for page_str, image_link in get_manga[manga["website"]].img_generator(
+        for page_str, image_link in ENV.get_manga[manga["website"]].img_generator(
             chapter, manga
         ):
             file_path = os.path.join(chapter_path, page_str + ".png")
@@ -173,7 +176,7 @@ def download_manga(manga: dict) -> None:
 def search(manga_website: str) -> dict:
     """function that search for a manga in the database"""
 
-    get_manga[manga_website].load_database()
+    ENV.get_manga[manga_website].load_database()
     raw_input.clear()
 
     index = 0
@@ -182,15 +185,17 @@ def search(manga_website: str) -> dict:
         raw_input.clear()
         print("Press tab to exit.")
         print("=", word_display)
+        print(" wait..", end="\r")
 
         rows_len = os.get_terminal_size().lines - 3
         columns_len = os.get_terminal_size().columns
 
-        print_list = get_manga[manga_website].print_list(word_display, rows_len)
+        print_list = ENV.get_manga[manga_website].print_list(word_display, rows_len)
 
         # adjust the index
         index = min(index, max(len(print_list) - 1, 0))
 
+        print("       ", end="\r")  # clear the wait.. printout
         for i, entry in enumerate(print_list):
             if len(entry[0]) <= columns_len - 2:
                 title = entry[0]
@@ -207,7 +212,7 @@ def search(manga_website: str) -> dict:
 
         if button == "enter":
             url_manga = print_list[index][1]
-            return get_manga[manga_website].create_manga(url_manga)
+            return ENV.get_manga[manga_website].create_manga(url_manga)
         elif button == "backspace":
             word_display = word_display[:-1]
         elif button == "tab":
@@ -243,12 +248,12 @@ def main() -> None:
             if not manga_website:
                 print("Manga website not identified")
                 continue
-            manga = get_manga[manga_website].create_manga(url)
+            manga = ENV.get_manga[manga_website].create_manga(url)
             download_manga(manga)
 
     else:
         print("Select the website you want to use")
-        manga_selection = list(get_manga.keys())
+        manga_selection = list(ENV.get_manga.keys())
         for num, key in enumerate(manga_selection):
             print(num, "->", key)
 

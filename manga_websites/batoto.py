@@ -8,10 +8,11 @@ import requests
 class Batoto:
     """mangalife"""
 
-    def __init__(self):
+    def __init__(self, timeout: int):
         self.list_mangas = []
         self.search_list = []
         self.current_word_search = ""
+        self.timeout = timeout
 
     def load_database(self) -> None:
         """load the database of mangas"""
@@ -30,7 +31,8 @@ class Batoto:
             while len(search_list) < max_len:
                 if page_number == 1:
                     response = requests.get(
-                        f"https://bato.to/search?word={word_search}", timeout=10
+                        f"https://bato.to/search?word={word_search}",
+                        timeout=self.timeout,
                     )
                 else:
                     # at this point page_text is the previous html and page_number the next page number
@@ -38,7 +40,7 @@ class Batoto:
                         break
                     response = requests.get(
                         f"https://bato.to/search?word={word_search}&page={page_number}",
-                        timeout=10,
+                        timeout=self.timeout,
                     )
 
                 page_text = response.text
@@ -67,7 +69,7 @@ class Batoto:
         if not url_manga:
             return None
 
-        response = requests.get(url_manga, timeout=10)
+        response = requests.get(url_manga, timeout=self.timeout)
         html_string = response.text
 
         list_chapters = re.findall(
@@ -93,7 +95,7 @@ class Batoto:
 
         chapter_url = chapter["url"]
 
-        response = requests.get(chapter_url, timeout=10)
+        response = requests.get(chapter_url, timeout=self.timeout)
 
         html_string = response.text
         pages_string = re.findall(r"const imgHttps = (.*);", html_string)[0]

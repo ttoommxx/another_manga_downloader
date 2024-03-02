@@ -1,8 +1,12 @@
 """collection of manga websites and their functions"""
+
 from .mangalife import Mangalife
 from .batoto import Batoto
 
-get_manga = {"mangalife": Mangalife(), "batoto": Batoto()}
+
+def create_manga_dict(timeout: int) -> dict:
+    """return a list of mangas"""
+    return {"mangalife": Mangalife(timeout), "batoto": Batoto(timeout)}
 
 
 def get_manga_website(url: str) -> str:
@@ -12,3 +16,7 @@ def get_manga_website(url: str) -> str:
     if url.startswith("https://bato.to/series/"):
         return "batoto"
     return ""
+
+
+def test(i):
+    return i + 2
