@@ -5,8 +5,8 @@ import argparse
 import multiprocessing
 import threading
 import signal
-import requests
 from zipfile import ZipFile
+import requests
 import raw_input
 from manga_websites import get_manga, get_manga_website
 
@@ -25,24 +25,28 @@ class Environment:
     @property
     def stop(self) -> int:
         """return stopping value"""
+
         return self._stop.value
 
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
+
         signal.signal(signal.SIGINT, lambda *args: None)
 
-    def set_main(self) -> None:
+    def set_main_process(self) -> None:
         """set process as main"""
-        signal.signal(signal.SIGINT, self.sigint_handler)
 
-    def sigint_handler(self, *args) -> None:
-        """signal keyboard interrupt handler"""
-        print("\nQuitting..")
-        self.print_queue.put(1)
-        self._stop.value = 1
+        def sigint_handler(*args) -> None:
+            """signal INT handler"""
+            print("\nQuitting..")
+            self.print_queue.put(1)
+            self._stop.value = 1
+
+        signal.signal(signal.SIGINT, sigint_handler)
 
     def quit(self) -> None:
         """quit environment"""
+
         self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
@@ -53,6 +57,7 @@ class Environment:
 
 def printer(manga_name: str, number_chapters: int) -> None:
     """function that updates the count of the executed chapters"""
+
     if ENV.stop:
         return
     failed = []
@@ -132,6 +137,7 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
 
 def download_manga(manga: dict) -> None:
     """main function"""
+
     if ENV.stop:
         return
 
@@ -186,13 +192,19 @@ def search(manga_website: str) -> dict:
         index = min(index, max(len(print_list) - 1, 0))
 
         for i, entry in enumerate(print_list):
-            title = entry[0]
-            if len(title) > columns_len - 2:
-                title = title[: columns_len - 5] + "..."
-            pre = "-" if i == index else " "
+            if len(entry[0]) <= columns_len - 2:
+                title = entry[0]
+            else:
+                title = entry[0][: columns_len - 5] + "..."
+            if i == index:
+                pre = "-"
+            else:
+                pre = " "
+
             print(pre, title)
 
         button = raw_input.getkey()
+
         if button == "enter":
             url_manga = print_list[index][1]
             return get_manga[manga_website].create_manga(url_manga)
@@ -212,8 +224,8 @@ def search(manga_website: str) -> dict:
             word_display += button
 
 
-if __name__ == "__main__":
-    ENV = Environment()
+def main() -> None:
+    """main function"""
 
     parser = argparse.ArgumentParser(
         prog="mangalife_downloader", description="download manga from mangalife"
@@ -221,18 +233,18 @@ if __name__ == "__main__":
     parser.add_argument("-u", "--urls", nargs="+")
     args = parser.parse_args()  # args.picker contains the modality
 
-    ENV.set_main()
+    ENV.set_main_process()
 
     if args.urls:
         # FIX THIS, IT DOES NOT WORK ANYMORE WITH URL DIRECTLY, INTEGRATE IN THE OTHER FILE WITH MORE FUNCTIONS AND WRITE A TEMPLATE
         print("Press CTRL+C to quit.")
         for url in args.urls:
-            MANGA_WEBSITE = get_manga_website(url)
-            if not MANGA_WEBSITE:
+            manga_website = get_manga_website(url)
+            if not manga_website:
                 print("Manga website not identified")
                 continue
-            MANGA = get_manga[MANGA_WEBSITE].create_manga(url)
-            download_manga(MANGA)
+            manga = get_manga[manga_website].create_manga(url)
+            download_manga(manga)
 
     else:
         print("Select the website you want to use")
@@ -240,14 +252,20 @@ if __name__ == "__main__":
         for num, key in enumerate(manga_selection):
             print(num, "->", key)
 
-        INDEX = input()
-        if INDEX != "q" and INDEX.isdigit() and 0 <= int(INDEX) < len(manga_selection):
-            MANGA_WEBSITE = manga_selection[int(INDEX)]
+        index = input()
+        if index != "q" and index.isdigit() and 0 <= int(index) < len(manga_selection):
+            manga_website = manga_selection[int(index)]
 
-            MANGA = search(MANGA_WEBSITE)
+            manga = search(manga_website)
             raw_input.clear()
-            if MANGA:
+            if manga:
                 print("Press CTRL+C to quit.")
-                download_manga(MANGA)
+                download_manga(manga)
+
+
+if __name__ == "__main__":
+    ENV = Environment()
+
+    main()
 
     ENV.quit()
