@@ -1,4 +1,4 @@
-# another_manga_downloader 1.02
+# another_manga_downloader 1.03
 
 I know, here is another python script to download mangas from the internet.. well, this one is small sized, and fast.
 
