@@ -2,6 +2,7 @@
 TEMPLATE
 collection of manga websites and their attributes
 """
+
 import requests
 
 
@@ -31,7 +32,3 @@ class NameOfTheManga:
     def img_generator(self, chapter: str, manga: dict):
         """create a generator for pages in chapter"""
         # this function is a generator that returs 2 variables: the page number (formatted appropriately) and a response file obtained by requests.get(...)
-
-    def img_download(self, file_path: str, url_response) -> None:
-        """image url downloader"""
-        # this function takes the response object from the img_generator and download it in file_path

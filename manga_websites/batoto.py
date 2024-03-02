@@ -1,4 +1,5 @@
 """collection of manga websites and their attributes"""
+
 import re
 import ast
 import requests
@@ -19,7 +20,7 @@ class Batoto:
         """return list of mangas"""
         if word_search != self.current_word_search:
             self.current_word_search = word_search
-            pattern = r'<a class="item-title" href="(.*?)" >(.*?)<span class="highlight-text">(.*?)</span>(.*?)</a>'
+            pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
 
             search_list = []
 
@@ -49,7 +50,12 @@ class Batoto:
                 page_number += 1
 
             self.search_list = [
-                ("".join(entry[1:]), f"https://bato.to{ entry[0] }")
+                (
+                    entry[1]
+                    .replace(r'<span class="highlight-text">', "\033[4m")
+                    .replace(r"</span>", "\033[0m"),
+                    f"https://bato.to{ entry[0] }",
+                )
                 for entry in search_list[:max_len]
             ]
 
