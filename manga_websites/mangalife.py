@@ -106,7 +106,11 @@ class Mangalife:
             page_number += 1
             url_page = f"https://www.manga4life.com/read-online/{
                 manga["true name"]}-chapter-{chapter_number}{index}-page-{page_number}.html"
-            response = requests.get(url_page, timeout=self.timeout)
+            try:
+                response = requests.get(url_page, timeout=self.timeout)
+            except Exception as e:
+                yield None, e
+                break
 
             if response.status_code != 200:
                 break

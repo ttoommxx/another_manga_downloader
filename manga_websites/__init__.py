@@ -16,7 +16,3 @@ def get_manga_website(url: str) -> str:
     if url.startswith("https://bato.to/series/"):
         return "batoto"
     return ""
-
-
-def test(i):
-    return i + 2

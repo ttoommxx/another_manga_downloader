@@ -95,11 +95,17 @@ class Batoto:
 
         chapter_url = chapter["url"]
 
-        response = requests.get(chapter_url, timeout=self.timeout)
+        stop = False
+        try:
+            response = requests.get(chapter_url, timeout=self.timeout)
+        except Exception as e:
+            yield None, e
+            stop = True
 
-        html_string = response.text
-        pages_string = re.findall(r"const imgHttps = (.*);", html_string)[0]
-        images = ast.literal_eval(pages_string)
+        if not stop:
+            html_string = response.text
+            pages_string = re.findall(r"const imgHttps = (.*);", html_string)[0]
+            images = ast.literal_eval(pages_string)
 
-        for page_number, image_link in enumerate(images):
-            yield f"{page_number:03d}", image_link
+            for page_number, image_link in enumerate(images):
+                yield f"{page_number:03d}", image_link

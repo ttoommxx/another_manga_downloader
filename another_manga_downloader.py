@@ -63,8 +63,10 @@ def printer(manga_name: str, number_chapters: int) -> None:
 
     if ENV.stop:
         return
+
     failed = []
     ENV.print_queue.put(None)
+
     for i in range(number_chapters + 1):
         token = ENV.print_queue.get()
         if token == 1:
@@ -92,50 +94,62 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
     chapter_path = os.path.join(folder_path, chapter["name"])
     zip_path = chapter_path + ".cbz"
 
-    failed_number = None
-    if not os.path.exists(zip_path):
-        os.makedirs(chapter_path, exist_ok=True)
+    if os.path.exists(zip_path):
+        ENV.print_queue.put(None)
+        return
 
-        # DOWNLOAD
-        pages = []
-        for page_str, image_link in ENV.get_manga[manga["website"]].img_generator(
-            chapter, manga
-        ):
-            file_path = os.path.join(chapter_path, page_str + ".png")
-            if not os.path.exists(file_path):
-                response = requests.get(image_link, stream=True, timeout=10)
-                with open(file_path, "wb") as page:
-                    for chunk in response.iter_content(1024):
-                        page.write(chunk)
+    os.makedirs(chapter_path, exist_ok=True)
 
-            if ENV.stop:
-                return
-
-            pages.append(file_path)
-
-        # ZIP
-        with ZipFile(zip_path, "a") as zip_file:
-            for page in pages:
-                if ENV.stop:
-                    break
-                page_path = os.path.join(chapter_path, page)
-                zip_file.write(page_path, page)
-        if ENV.stop:
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
+    # DOWNLOAD
+    pages = []
+    for page_str, image_link in ENV.get_manga[manga["website"]].img_generator(
+        chapter, manga
+    ):
+        if page_str is None:
+            ENV.print_queue.put(chapter["name"] + " error type: " + image_link)
             return
 
-        # remove folder
+        file_path = os.path.join(chapter_path, page_str + ".png")
+        if not os.path.exists(file_path):
+            try:
+                response = requests.get(image_link, stream=True, timeout=10)
+            except Exception as e:
+                ENV.print_queue.put(chapter["name"] + " error type: " + e)
+                return
+
+            with open(file_path, "wb") as page:
+                for chunk in response.iter_content(1024):
+                    page.write(chunk)
+
+        if ENV.stop:
+            return
+
+        pages.append(file_path)
+
+    # ZIP
+    with ZipFile(zip_path, "a") as zip_file:
         for page in pages:
-            os.remove(page)
-        if not os.listdir(chapter_path):
-            os.rmdir(chapter_path)
+            if ENV.stop:
+                break
+            page_path = os.path.join(chapter_path, page)
+            zip_file.write(page_path, page)
 
-        # save chapter name is fail
-        if not os.path.exists(zip_path):
-            failed_number = chapter["name"]
+    if ENV.stop:
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        return
 
-    ENV.print_queue.put(failed_number)
+    # remove folder
+    for page in pages:
+        os.remove(page)
+    if not os.listdir(chapter_path):
+        os.rmdir(chapter_path)
+
+    # save chapter name is fail
+    if not os.path.exists(zip_path):
+        ENV.print_queue.put(chapter["name"])
+    else:
+        ENV.print_queue.put(None)
 
 
 def download_manga(manga: dict) -> None:
