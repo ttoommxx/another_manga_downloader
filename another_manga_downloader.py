@@ -1,4 +1,5 @@
-""" necessary modules """
+"""necessary modules"""
+
 import os
 import argparse
 import multiprocessing
@@ -25,11 +26,6 @@ class Environment:
     def stop(self) -> int:
         """return stopping value"""
         return self._stop.value
-
-    @stop.setter
-    def stop(self, val) -> None:
-        """setter for stop multiprocessing value"""
-        self._stop = val
 
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
