@@ -5,6 +5,7 @@ import argparse
 import multiprocessing
 import threading
 import signal
+import time
 from zipfile import ZipFile
 import requests
 import raw_input
@@ -31,6 +32,18 @@ class Environment:
 
         return self._stop.value
 
+    @property
+    def rows_len(self) -> int:
+        """rows length"""
+
+        return os.get_terminal_size().lines - 3
+
+    @property
+    def columns_len(self) -> int:
+        """columns length"""
+
+        return os.get_terminal_size().columns
+
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
 
@@ -46,6 +59,25 @@ class Environment:
             self._stop.value = 1
 
         signal.signal(signal.SIGINT, sigint_handler)
+
+    def generate_search_print(outer_self):
+        """generate the class search print"""
+
+        class SearchPrint:
+            """class contaning variables useful for the search printer"""
+
+            def __init__(self) -> None:
+                self.word_display = ""
+                self.url_manga = ""
+                self.index = 0
+                self.queue = outer_self.manager.Queue()
+
+            def quit(self) -> None:
+                """quit class"""
+
+                self.queue.put(None)
+
+        return SearchPrint()
 
     def quit(self) -> None:
         """quit environment"""
@@ -187,60 +219,97 @@ def download_manga(manga: dict) -> None:
     printer_thread.join()
 
 
-def search(manga_website: str) -> dict:
-    """function that search for a manga in the database"""
+def search_print_function(manga_website: str, search_print) -> None:
+    """async search printer"""
 
-    ENV.get_manga[manga_website].load_database()
-    raw_input.clear()
+    while search_print.queue.get():
+        time.sleep(0.05)
 
-    index = 0
-    word_display = ""
-    while True:
-        raw_input.clear()
-        print("Press tab to exit.")
-        print("=", word_display)
-        print(" wait..", end="\r")
-
-        rows_len = os.get_terminal_size().lines - 3
-        columns_len = os.get_terminal_size().columns
-
-        print_list = ENV.get_manga[manga_website].print_list(word_display, rows_len)
+        print_list = ENV.get_manga[manga_website].print_list(
+            search_print.word_display, ENV.rows_len
+        )
 
         # adjust the index
-        index = min(index, max(len(print_list) - 1, 0))
+        search_print.index = min(search_print.index, max(len(print_list) - 1, 0))
 
-        print("       ", end="\r")  # clear the wait.. printout
+        columns_len = ENV.columns_len
+
+        # ----- print
+        to_print = ["Press tab to exit.\n= ", search_print.word_display]
         for i, entry in enumerate(print_list):
             if len(entry[0]) <= columns_len - 2:
                 title = entry[0]
             else:
                 title = entry[0][: columns_len - 5] + "..."
-            if i == index:
+            if i == search_print.index:
                 pre = "-"
             else:
                 pre = " "
+            to_print.append("\n")
+            to_print.append(pre)
+            to_print.append(" ")
+            to_print.append(title)
 
-            print(pre, title)
+        raw_input.keyboard_detach()
+        raw_input.clear()
+        print(*to_print, sep="")
+        raw_input.keyboard_attach()
+        # ----- end print
+
+        if search_print.index < len(print_list):
+            search_print.url_manga = print_list[search_print.index][1]
+        else:
+            search_print.url_manga = ""
+
+    raw_input.keyboard_detach()
+
+
+def search(manga_website: str) -> dict:
+    """function that search for a manga in the database"""
+
+    ENV.get_manga[manga_website].load_database()
+
+    search_print = ENV.generate_search_print()
+
+    printer_thread = threading.Thread(
+        target=search_print_function, daemon=True, args=(manga_website, search_print)
+    )
+    printer_thread.start()
+
+    while True:
+        raw_input.clear()
+        print("Press tab to exit.")
+        print("=", search_print.word_display)
 
         button = raw_input.getkey()
+        search_print.queue.put(1)
 
         if button == "enter":
-            url_manga = print_list[index][1]
-            return ENV.get_manga[manga_website].create_manga(url_manga)
+            search_print.quit()
+            printer_thread.join()
+            return ENV.get_manga[manga_website].create_manga(search_print.url_manga)
+
         elif button == "backspace":
-            word_display = word_display[:-1]
+            search_print.word_display = search_print.word_display[:-1]
+
         elif button == "tab":
+            search_print.quit()
+            printer_thread.join()
             return None
+
         elif button == "up":
-            if index:
-                index -= 1
+            if search_print.index:
+                search_print.index -= 1
+
         elif button == "down":
-            if index <= rows_len - 2:
-                index += 1
+            if search_print.index <= ENV.rows_len - 2:
+                search_print.index += 1
+
         elif button == "left" or button == "right":
             pass
+
         else:
-            word_display += button
+            search_print.word_display += button
 
 
 def main() -> None:
