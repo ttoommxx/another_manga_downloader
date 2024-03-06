@@ -1,4 +1,5 @@
-""" cross platofrm module to handle raw input from terminal """
+"""cross platofrm module to handle raw input from terminal"""
+
 import os
 import sys
 
@@ -19,6 +20,7 @@ if os.name == "posix":
     def keyboard_attach() -> None:
         """attach keyboard input"""
         tty.setraw(VARS.fd)
+        tty.setcbreak(VARS.fd)
 
     def keyboard_detach() -> None:
         """detach keyboard input"""
