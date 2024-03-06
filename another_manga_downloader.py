@@ -3,6 +3,7 @@
 import os
 import argparse
 import multiprocessing
+import queue
 import threading
 import signal
 import time
@@ -54,30 +55,12 @@ class Environment:
 
         def sigint_handler(*args) -> None:
             """signal INT handler"""
+
             print("\nQuitting..")
             self.print_queue.put(1)
             self._stop.value = 1
 
         signal.signal(signal.SIGINT, sigint_handler)
-
-    def generate_search_print(outer_self):
-        """generate the class search print"""
-
-        class SearchPrint:
-            """class contaning variables useful for the search printer"""
-
-            def __init__(self) -> None:
-                self.word_display = ""
-                self.url_manga = ""
-                self.index = 0
-                self.queue = outer_self.manager.Queue()
-
-            def quit(self) -> None:
-                """quit class"""
-
-                self.queue.put(None)
-
-        return SearchPrint()
 
     def quit(self) -> None:
         """quit environment"""
@@ -85,6 +68,21 @@ class Environment:
         self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
+
+
+class SearchPrint:
+    """class contaning variables useful for the search printer"""
+
+    def __init__(self) -> None:
+        self.word_display = ""
+        self.url_manga = ""
+        self.index = 0
+        self.queue = queue.Queue()
+
+    def quit(self) -> None:
+        """quit class"""
+
+        self.queue.put(None)
 
 
 # functions
@@ -269,7 +267,7 @@ def search(manga_website: str) -> dict:
 
     ENV.get_manga[manga_website].load_database()
 
-    search_print = ENV.generate_search_print()
+    search_print = SearchPrint()
 
     printer_thread = threading.Thread(
         target=search_print_function, daemon=True, args=(manga_website, search_print)
@@ -288,23 +286,18 @@ def search(manga_website: str) -> dict:
             search_print.quit()
             printer_thread.join()
             return ENV.get_manga[manga_website].create_manga(search_print.url_manga)
-
         elif button == "backspace":
             search_print.word_display = search_print.word_display[:-1]
-
         elif button == "tab":
             search_print.quit()
             printer_thread.join()
             return None
-
         elif button == "up":
             if search_print.index:
                 search_print.index -= 1
-
         elif button == "down":
             if search_print.index <= ENV.rows_len - 2:
                 search_print.index += 1
-
         elif button == "left" or button == "right":
             pass
 
