@@ -58,14 +58,14 @@ class Environment:
             print("\nProgram terminated, re-run to resume.")
 
 
-class PrintClass:
+class SearchClass:
     """class contaning variables useful for the search printer"""
 
     def __init__(self, manga_website: str) -> None:
-        self.word_display = ""
+        self.word = ""
         self.url_manga = ""
         self._index = 0
-        self.print_list = []
+        self._print_list = []
         self.queue = queue.Queue(maxsize=1)
 
         # enbale the curses module
@@ -73,7 +73,7 @@ class PrintClass:
         uc.cbreak()
         uc.noecho()
         uc.keypad(self.stdscr, True)
-        # uc.curs_set(0)
+        uc.curs_set(0)
 
         # start the printer thread
         self.printer_thread = threading.Thread(
@@ -84,23 +84,35 @@ class PrintClass:
         self.printer_thread.start()
 
     @property
+    def print_list(self) -> list:
+        """print_list return"""
+
+        return self._print_list
+
+    @print_list.setter
+    def print_list(self, new_list: list) -> None:
+        """print_list setter"""
+
+        self._print_list = new_list
+        self.index = min(self.index, max(len(new_list) - 1, 0))
+
+    @property
     def index(self) -> int:
         """index return"""
 
-        self._index = min(self._index, len(self.print_list))
         return self._index
 
     @index.setter
     def index(self, val: int) -> None:
         """index setter"""
 
-        if 0 <= val <= min(self.rows - 3, len(self.print_list) - 1):
+        if 0 <= val < min(self.rows - 2, len(self.print_list)):
             self._index = val
 
-            if self.index < len(self.print_list):
-                self.url_manga = self.print_list[self.index][1]
-            else:
-                self.url_manga = ""
+        if self.index < len(self.print_list):
+            self.url_manga = self.print_list[self.index][1]
+        else:
+            self.url_manga = ""
 
     @property
     def columns(self) -> int:
@@ -254,32 +266,34 @@ def download_manga(manga: dict) -> None:
     printer_thread.join()
 
 
-def search_printer(manga_website: str, print_class) -> None:
+def search_printer(manga_website: str, search_class) -> None:
     """async search printer"""
 
-    while print_class.queue.get():
+    while search_class.queue.get():
         time.sleep(0.1)
 
-        print_class.print_list = ENV.get_manga[manga_website].print_list(
-            print_class.word_display, print_class.rows - 2
+        search_class.print_list = ENV.get_manga[manga_website].print_list(
+            search_class.word, search_class.rows - 2
         )
 
-        columns_len = print_class.columns
+        columns_len = search_class.columns
 
         # ----- print
-        for j in range(2, print_class.rows):  # clear the remainig lines
+        for j in range(2, search_class.rows):  # clear lines
             uc.move(j, 0)
             uc.clrtoeol()
 
-        i = 0
-        for i, entry in enumerate(print_class.print_list):
+        for i, entry in enumerate(search_class.print_list):
             if len(entry[0]) <= columns_len - 2:
                 title = entry[0]
             else:
                 title = entry[0][: columns_len - 5] + "..."
-            uc.mvaddstr(2 + i, 0, f"  {title}")
+            if i == search_class.index:
+                pre = "-"
+            else:
+                pre = " "
+            uc.mvaddstr(2 + i, 0, f"{pre} {title}")
 
-        uc.move(2 + print_class.index, 0)
         uc.refresh()
         # ----- end print
 
@@ -289,37 +303,43 @@ def search(manga_website: str) -> dict:
 
     ENV.get_manga[manga_website].load_database()
 
-    print_class = PrintClass(manga_website)
+    search_class = SearchClass(manga_website)
 
     uc.mvaddstr(0, 0, "Press TAB to exit.")
     uc.mvaddstr(1, 0, "| ")
 
     while True:
-        uc.move(2 + print_class.index, 0)
         button = str(uc.getkey(), "utf-8")
 
         if button == "KEY_UP":
-            print_class.index -= 1
+            if len(search_class.print_list) > 1:
+                uc.mvaddstr(2 + search_class.index, 0, " ")
+                search_class.index -= 1
+                uc.mvaddstr(2 + search_class.index, 0, "-")
         elif button == "KEY_DOWN":
-            print_class.index += 1
+            if len(search_class.print_list) > 1:
+                uc.mvaddstr(2 + search_class.index, 0, " ")
+                search_class.index += 1
+                uc.mvaddstr(2 + search_class.index, 0, "-")
         elif button == "^I":
             output = None
             break
         elif button == "^J":
-            output = ENV.get_manga[manga_website].create_manga(print_class.url_manga)
+            output = ENV.get_manga[manga_website].create_manga(search_class.url_manga)
             break
         if button == "KEY_BACKSPACE":
-            if print_class.queue.empty():
-                print_class.queue.put(1)
-            uc.mvaddstr(1, 2 + len(print_class.word_display), " ")
-            print_class.word_display = print_class.word_display[:-1]
+            if search_class.word:
+                uc.mvaddstr(1, 2 + len(search_class.word) - 1, " ")
+                search_class.word = search_class.word[:-1]
+                if search_class.queue.empty():
+                    search_class.queue.put(1)
         elif len(button) == 1:
-            if print_class.queue.empty():
-                print_class.queue.put(1)
-            uc.mvaddstr(1, 2 + len(print_class.word_display), button)
-            print_class.word_display += button
+            uc.mvaddstr(1, 2 + len(search_class.word), button)
+            search_class.word += button
+            if search_class.queue.empty():
+                search_class.queue.put(1)
 
-    print_class.quit()
+    search_class.quit()
 
     return output
 
