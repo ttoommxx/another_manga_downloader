@@ -3,8 +3,6 @@ TEMPLATE
 collection of manga websites and their attributes
 """
 
-import requests
-
 
 class NameOfTheManga:
     """name of the manga"""

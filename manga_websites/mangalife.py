@@ -112,7 +112,7 @@ class Mangalife:
                 break
 
             page_text = response.text
-            if "<title>404 Page Not Found</title>" in response.text:
+            if r"<title>404 Page Not Found</title>" in page_text:
                 break
 
             server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
