@@ -67,7 +67,7 @@ class SearchPrint:
         self._index = 0
         self.max_len = 0
         self.print_list = []
-        self.queue = queue.Queue(maxsize=20)
+        self.queue = queue.Queue(maxsize=100)
 
         # enbale the curses module
         self.stdscr = uc.initscr()
@@ -255,6 +255,10 @@ def search_printer(manga_website: str, search_print) -> None:
     """async search printer"""
 
     while search_print.queue.get():
+        while not search_print.queue.empty():
+            # clean the queue
+            search_print.queue.get()
+
         time.sleep(0.1)
 
         search_print.print_list = ENV.get_manga[manga_website].print_list(
