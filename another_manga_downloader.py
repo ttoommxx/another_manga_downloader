@@ -111,6 +111,12 @@ class PrintClass:
 
         return uc.getmaxyx(self.stdscr)[0]
 
+    def empty(self) -> None:
+        """empty the queue"""
+
+        while not self.queue.empty():
+            self.queue.get()
+
     def quit(self) -> None:
         """quit class"""
 
@@ -255,9 +261,7 @@ def search_printer(manga_website: str, print_class) -> None:
     """async search printer"""
 
     while print_class.queue.get():
-        while not print_class.queue.empty():
-            # clean the queue
-            print_class.queue.get()
+        print_class.empty()
 
         time.sleep(0.1)
 
