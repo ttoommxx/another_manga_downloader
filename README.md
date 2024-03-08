@@ -1,11 +1,19 @@
-# another_manga_downloader 1.1.1
+# another_manga_downloader 2 beta
 
 I know, here is another python script to download mangas from the internet.. well, this one is small sized, and fast.
 
 ## installation
 
-Download `another_manga_downloader.py` and `raw_input.py`, either manually or by cloning the repo `git clone https://github.com/ttoommxx/another_manga_downloader`.
 Requires Python >= 3.10.
+
+Install curses for printing on terminal
+```
+pip install uni-curses
+```
+download the repo
+```
+git clone https://github.com/ttoommxx/another_manga_downloader
+```
 
 ## usage
 

@@ -11,8 +11,6 @@ class NameOfTheManga:
 
     def __init__(self):
         self.list_mangas = []  # total list of mangas (if available)
-        self.search_list = []  # list with entries name_manga, url_manga
-        self.current_word_search = ""  # current word used for searching
 
     def load_database(self) -> None:
         """load the database of mangas"""

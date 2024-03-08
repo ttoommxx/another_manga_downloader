@@ -11,8 +11,6 @@ class Mangalife:
 
     def __init__(self, timeout: int):
         self.list_mangas = []
-        self.search_list = []
-        self.current_word_search = ""
         self.timeout = timeout
 
     def load_database(self) -> None:
@@ -43,28 +41,26 @@ class Mangalife:
 
     def print_list(self, word_search: str, max_len: int = 100):
         """return list of mangas"""
+
         word_search_patter = word_search.lower().replace(" ", r".*")
+        try:
+            re.compile(word_search_patter)
+        except re.error:
+            search_iter = (
+                entry for entry in self.list_mangas if word_search in entry[2]
+            )
+        else:
+            search_iter = (
+                entry
+                for entry in self.list_mangas
+                if re.search(word_search_patter, entry[2])
+            )
 
-        if word_search_patter != self.current_word_search:
-            self.current_word_search = word_search_patter
-
-            try:
-                search_iter = (
-                    entry
-                    for entry in self.list_mangas
-                    if re.search(word_search_patter, entry[2])
-                )
-                search_list = list(islice(search_iter, max_len))
-            except re.error:
-                search_list = [
-                    entry for entry in self.list_mangas if word_search in entry[2]
-                ]
-            self.search_list = [
-                (entry[1], f"https://www.manga4life.com/manga/{ entry[0] }")
-                for entry in search_list
-            ]
-
-        return self.search_list
+        search_list = list(islice(search_iter, max_len))
+        return [
+            (entry[1], f"https://www.manga4life.com/manga/{ entry[0] }")
+            for entry in search_list
+        ]
 
     def create_manga(self, url_manga: str) -> str:
         """create manga dictionary with various attributes"""

@@ -9,7 +9,7 @@ import signal
 import time
 from zipfile import ZipFile
 import requests
-import raw_input
+import unicurses as uc
 from manga_websites import create_manga_dict, get_manga_website
 
 # environment variables
@@ -32,18 +32,6 @@ class Environment:
         """return stopping value"""
 
         return self._stop.value
-
-    @property
-    def rows_len(self) -> int:
-        """rows length"""
-
-        return os.get_terminal_size().lines - 3
-
-    @property
-    def columns_len(self) -> int:
-        """columns length"""
-
-        return os.get_terminal_size().columns
 
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
@@ -73,16 +61,45 @@ class Environment:
 class SearchPrint:
     """class contaning variables useful for the search printer"""
 
-    def __init__(self) -> None:
+    def __init__(self, manga_website: str) -> None:
         self.word_display = ""
         self.url_manga = ""
         self.index = 0
-        self.queue = queue.Queue()
+        self.queue = queue.Queue(maxsize=10)
+
+        # enbale the curses module
+        self.stdscr = uc.initscr()
+        uc.cbreak()
+        uc.noecho()
+        uc.keypad(self.stdscr, True)
+        uc.mousemask(True)
+
+        # start the printer thread
+        self.printer_thread = threading.Thread(
+            target=search_printer,
+            daemon=True,
+            args=(manga_website, self),
+        )
+        self.printer_thread.start()
+
+    @property
+    def columns(self) -> int:
+        """return number of columns"""
+
+        return uc.getmaxyx(self.stdscr)[1]
+
+    @property
+    def rows(self) -> int:
+        """return number of rows"""
+
+        return uc.getmaxyx(self.stdscr)[0]
 
     def quit(self) -> None:
         """quit class"""
 
         self.queue.put(None)
+        self.printer_thread.join()
+        uc.endwin()
 
 
 # functions
@@ -217,41 +234,36 @@ def download_manga(manga: dict) -> None:
     printer_thread.join()
 
 
-def search_print_function(manga_website: str, search_print) -> None:
+def search_printer(manga_website: str, search_print) -> None:
     """async search printer"""
 
     while search_print.queue.get():
-        time.sleep(0.05)
+        time.sleep(0.1)
 
         print_list = ENV.get_manga[manga_website].print_list(
-            search_print.word_display, ENV.rows_len
+            search_print.word_display, search_print.rows - 2
         )
 
         # adjust the index
-        search_print.index = min(search_print.index, max(len(print_list) - 1, 0))
+        search_print.index = min(search_print.index, max(len(print_list) - 2, 0))
 
-        columns_len = ENV.columns_len
+        columns_len = search_print.columns
 
         # ----- print
-        to_print = ["Press tab to exit.\n= ", search_print.word_display]
+        i = -1
         for i, entry in enumerate(print_list):
             if len(entry[0]) <= columns_len - 2:
                 title = entry[0]
             else:
                 title = entry[0][: columns_len - 5] + "..."
-            if i == search_print.index:
-                pre = "-"
-            else:
-                pre = " "
-            to_print.append("\n")
-            to_print.append(pre)
-            to_print.append(" ")
-            to_print.append(title)
+            uc.mvaddstr(2 + i, 0, f"  {title}")
 
-        raw_input.keyboard_detach()
-        raw_input.clear()
-        print(*to_print, sep="")
-        raw_input.keyboard_attach()
+        for j in range(3 + i, search_print.rows):  # clear the remainig lines
+            uc.move(j, 0)
+            uc.clrtoeol()
+
+        uc.move(search_print.index + 2, 0)
+        uc.refresh()
         # ----- end print
 
         if search_print.index < len(print_list):
@@ -259,50 +271,50 @@ def search_print_function(manga_website: str, search_print) -> None:
         else:
             search_print.url_manga = ""
 
-    raw_input.keyboard_detach()
-
 
 def search(manga_website: str) -> dict:
     """function that search for a manga in the database"""
 
     ENV.get_manga[manga_website].load_database()
 
-    search_print = SearchPrint()
+    search_print = SearchPrint(manga_website)
 
-    printer_thread = threading.Thread(
-        target=search_print_function, daemon=True, args=(manga_website, search_print)
-    )
-    printer_thread.start()
+    uc.mvaddstr(0, 0, "Press ESC to exit.")
 
     while True:
-        raw_input.clear()
-        print("Press tab to exit.")
-        print("=", search_print.word_display)
+        uc.move(1, 0)
+        uc.clrtoeol()
+        uc.mvaddstr(1, 0, f"| {search_print.word_display}")
+        uc.move(search_print.index + 2, 0)
 
-        button = raw_input.getkey()
-        search_print.queue.put(1)
+        button = str(uc.getkey(), "utf-8")
 
-        if button == "enter":
-            search_print.quit()
-            printer_thread.join()
-            return ENV.get_manga[manga_website].create_manga(search_print.url_manga)
-        elif button == "backspace":
-            search_print.word_display = search_print.word_display[:-1]
-        elif button == "tab":
-            search_print.quit()
-            printer_thread.join()
-            return None
-        elif button == "up":
+        if button == "KEY_UP":
             if search_print.index:
                 search_print.index -= 1
-        elif button == "down":
-            if search_print.index <= ENV.rows_len - 2:
+                uc.move(search_print.index, 0)
+        elif button == "KEY_DOWN":
+            if search_print.index <= search_print.rows - 4:
                 search_print.index += 1
-        elif button == "left" or button == "right":
-            pass
-
+                uc.move(search_print.index, 0)
+        elif button == "^[":
+            output = None
+            break
         else:
-            search_print.word_display += button
+            search_print.queue.put(1)
+            if button == "^J":
+                output = ENV.get_manga[manga_website].create_manga(
+                    search_print.url_manga
+                )
+                break
+            elif button == "KEY_BACKSPACE":
+                search_print.word_display = search_print.word_display[:-1]
+            elif len(button) == 1:
+                search_print.word_display += button
+
+    search_print.quit()
+
+    return output
 
 
 def main() -> None:
@@ -336,9 +348,7 @@ def main() -> None:
         index = input()
         if index != "q" and index.isdigit() and 0 <= int(index) < len(manga_selection):
             manga_website = manga_selection[int(index)]
-
             manga = search(manga_website)
-            raw_input.clear()
             if manga:
                 print("Press CTRL+C to quit.")
                 download_manga(manga)

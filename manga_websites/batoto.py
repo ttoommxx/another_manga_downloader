@@ -9,9 +9,6 @@ class Batoto:
     """mangalife"""
 
     def __init__(self, timeout: int):
-        self.list_mangas = []
-        self.search_list = []
-        self.current_word_search = ""
         self.timeout = timeout
 
     def load_database(self) -> None:
@@ -19,49 +16,45 @@ class Batoto:
 
     def print_list(self, word_search: str, max_len: int = 100) -> list:
         """return list of mangas"""
-        if word_search != self.current_word_search:
-            self.current_word_search = word_search
-            pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
+        pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
 
-            search_list = []
+        search_list = []
 
-            page_number = 1
-            page_text = ""
+        page_number = 1
+        page_text = ""
 
-            while len(search_list) < max_len:
-                if page_number == 1:
-                    response = requests.get(
-                        f"https://bato.to/search?word={word_search}",
-                        timeout=self.timeout,
-                    )
-                else:
-                    # at this point page_text is the previous html and page_number the next page number
-                    if f"page={page_number}" not in page_text:
-                        break
-                    response = requests.get(
-                        f"https://bato.to/search?word={word_search}&page={page_number}",
-                        timeout=self.timeout,
-                    )
-
-                page_text = response.text
-
-                new_list = re.findall(pattern, page_text)
-                if not new_list:
-                    break
-                search_list.extend(new_list)
-                page_number += 1
-
-            self.search_list = [
-                (
-                    entry[1]
-                    .replace(r'<span class="highlight-text">', "\033[4m")
-                    .replace(r"</span>", "\033[0m"),
-                    f"https://bato.to{ entry[0] }",
+        while len(search_list) < max_len:
+            if page_number == 1:
+                response = requests.get(
+                    f"https://bato.to/search?word={word_search}",
+                    timeout=self.timeout,
                 )
-                for entry in search_list[:max_len]
-            ]
+            else:
+                # at this point page_text is the previous html and page_number the next page number
+                if f"page={page_number}" not in page_text:
+                    break
+                response = requests.get(
+                    f"https://bato.to/search?word={word_search}&page={page_number}",
+                    timeout=self.timeout,
+                )
 
-        return self.search_list
+            page_text = response.text
+
+            new_list = re.findall(pattern, page_text)
+            if not new_list:
+                break
+            search_list.extend(new_list)
+            page_number += 1
+
+        return [
+            (
+                entry[1]
+                .replace(r'<span class="highlight-text">', "")
+                .replace(r"</span>", ""),
+                f"https://bato.to{ entry[0] }",
+            )
+            for entry in search_list[:max_len]
+        ]
 
     def create_manga(self, url_manga: str) -> str:
         """create manga dictionary with various attributes"""
