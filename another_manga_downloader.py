@@ -67,14 +67,13 @@ class SearchPrint:
         self._index = 0
         self.max_len = 0
         self.print_list = []
-        self.queue = queue.Queue(maxsize=10)
+        self.queue = queue.Queue(maxsize=20)
 
         # enbale the curses module
         self.stdscr = uc.initscr()
         uc.cbreak()
         uc.noecho()
         uc.keypad(self.stdscr, True)
-        uc.mousemask(True)
 
         # start the printer thread
         self.printer_thread = threading.Thread(
