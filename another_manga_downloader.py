@@ -238,7 +238,7 @@ def download_manga(manga: dict) -> None:
         return
 
     # create folder if does not exists
-    mangas_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Mangas")
+    mangas_path = os.path.join(os.path.expanduser("~"), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
     folder_path = os.path.join(mangas_path, manga["name"])
     os.makedirs(folder_path, exist_ok=True)
@@ -356,7 +356,6 @@ def main() -> None:
     ENV.set_main_process()
 
     if args.urls:
-        # FIX THIS, IT DOES NOT WORK ANYMORE WITH URL DIRECTLY, INTEGRATE IN THE OTHER FILE WITH MORE FUNCTIONS AND WRITE A TEMPLATE
         print("Press CTRL+C to quit.")
         for url in args.urls:
             manga_website = get_manga_website(url)
@@ -373,7 +372,7 @@ def main() -> None:
             print(num, "->", key)
 
         index = input()
-        if index != "q" and index.isdigit() and 0 <= int(index) < len(manga_selection):
+        if index.isdigit() and 0 <= int(index) < len(manga_selection):
             manga_website = manga_selection[int(index)]
             manga = search(manga_website)
             if manga:
