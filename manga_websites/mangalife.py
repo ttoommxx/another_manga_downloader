@@ -110,12 +110,15 @@ class Mangalife:
 
             if response.status_code != 200:
                 break
-
             page_text = response.text
             if r"<title>404 Page Not Found</title>" in page_text:
                 break
 
-            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)[0]
+            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)
+            if not server_name:
+                yield None, "website is protected"
+                break
+            server_name = server_name[0]
             server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
                 0
             ].replace("null", "None")

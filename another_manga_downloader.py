@@ -6,7 +6,6 @@ import multiprocessing
 import queue
 import threading
 import signal
-import time
 from zipfile import ZipFile
 import requests
 import unicurses as uc
@@ -185,7 +184,7 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
         chapter, manga
     ):
         if page_str is None:
-            ENV.print_queue.put(chapter["name"] + " error type: " + image_link)
+            ENV.print_queue.put(chapter["name"] + ' error type: "' + image_link + '"')
             return
 
         file_path = os.path.join(chapter_path, page_str + ".png")
@@ -270,8 +269,6 @@ def search_printer(manga_website: str, search_class) -> None:
     """async search printer"""
 
     while search_class.queue.get():
-        time.sleep(0.1)
-
         search_class.print_list = ENV.get_manga[manga_website].print_list(
             search_class.word, search_class.rows - 2
         )
@@ -371,7 +368,7 @@ def main() -> None:
         for num, key in enumerate(manga_selection):
             print(num, "->", key)
 
-        index = input()
+        index = input("Selection: ")
         if index.isdigit() and 0 <= int(index) < len(manga_selection):
             manga_website = manga_selection[int(index)]
             manga = search(manga_website)
