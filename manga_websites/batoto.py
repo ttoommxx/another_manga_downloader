@@ -73,7 +73,7 @@ class Batoto:
             for chapter in list_chapters
         ]
 
-        name = re.findall(r"<title>(.*?) Manga</title>", html_string)[0]
+        name = re.search(r"<title>(.*?) Manga</title>", html_string).group(1)
 
         manga = {
             "website": "batoto",
@@ -97,7 +97,7 @@ class Batoto:
 
         if not stop:
             html_string = response.text
-            pages_string = re.findall(r"const imgHttps = (.*);", html_string)[0]
+            pages_string = re.search(r"const imgHttps = (.*);", html_string).group(1)
             images = ast.literal_eval(pages_string)
 
             for page_number, image_link in enumerate(images):

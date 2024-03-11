@@ -25,7 +25,7 @@ class Mangalife:
             response.raise_for_status()
 
         page_text = response.text
-        list_mangas = re.findall(r"vm.Directory = (.*);", page_text)[0]
+        list_mangas = re.search(r"vm.Directory = (.*);", page_text).group(1)
         list_mangas = (
             list_mangas.replace("null", "None")
             .replace("false", "False")
@@ -71,9 +71,11 @@ class Mangalife:
         response = requests.get(url_manga, timeout=self.timeout)
 
         html_string = response.text
-        name = re.findall(r"<title>(.*) \| MangaLife</title>", html_string)[0]
-        chapters_string = re.findall(r"vm.Chapters = (.*);", html_string)[0].replace(
-            "null", "None"
+        name = re.search(r"<title>(.*) \| MangaLife</title>", html_string).group(1)
+        chapters_string = (
+            re.search(r"vm.Chapters = (.*);", html_string)
+            .group(1)
+            .replace("null", "None")
         )
         list_chapters = ast.literal_eval(chapters_string)
         for chapter in list_chapters:
@@ -114,14 +116,16 @@ class Mangalife:
             if r"<title>404 Page Not Found</title>" in page_text:
                 break
 
-            server_name = re.findall(r"vm.CurPathName = \"(.*)\";", page_text)
+            server_name = re.search(r"vm.CurPathName = \"(.*)\";", page_text)
             if not server_name:
                 yield None, "website is protected"
                 break
-            server_name = server_name[0]
-            server_directory = re.findall(r"vm.CurChapter = (.*);", page_text)[
-                0
-            ].replace("null", "None")
+            server_name = server_name.group(1)
+            server_directory = (
+                re.search(r"vm.CurChapter = (.*);", page_text)
+                .group(1)
+                .replace("null", "None")
+            )
             server_directory = ast.literal_eval(server_directory)
             chap_num = server_directory["Chapter"]
             chap_num = (
