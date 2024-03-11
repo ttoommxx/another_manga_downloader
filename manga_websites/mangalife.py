@@ -42,7 +42,7 @@ class Mangalife:
     def print_list(self, word_search: str, max_len: int = 100):
         """return list of mangas"""
 
-        word_search_patter = word_search.lower().replace(" ", r".*")
+        word_search_patter = word_search.lower().replace(" ", r".*?")
         try:
             re.compile(word_search_patter)
         except re.error:
@@ -71,9 +71,9 @@ class Mangalife:
         response = requests.get(url_manga, timeout=self.timeout)
 
         html_string = response.text
-        name = re.search(r"<title>(.*) \| MangaLife</title>", html_string).group(1)
+        name = re.search(r"<title>(.*?) \| MangaLife</title>", html_string).group(1)
         chapters_string = (
-            re.search(r"vm.Chapters = (.*);", html_string)
+            re.search(r"vm.Chapters = (.*?);", html_string)
             .group(1)
             .replace("null", "None")
         )
@@ -116,13 +116,13 @@ class Mangalife:
             if r"<title>404 Page Not Found</title>" in page_text:
                 break
 
-            server_name = re.search(r"vm.CurPathName = \"(.*)\";", page_text)
+            server_name = re.search(r"vm.CurPathName = \"(.*?)\";", page_text)
             if not server_name:
                 yield None, "website is protected"
                 break
             server_name = server_name.group(1)
             server_directory = (
-                re.search(r"vm.CurChapter = (.*);", page_text)
+                re.search(r"vm.CurChapter = (.*?);", page_text)
                 .group(1)
                 .replace("null", "None")
             )

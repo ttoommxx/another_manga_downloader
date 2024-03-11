@@ -97,7 +97,7 @@ class Batoto:
 
         if not stop:
             html_string = response.text
-            pages_string = re.search(r"const imgHttps = (.*);", html_string).group(1)
+            pages_string = re.search(r"const imgHttps = (.*?);", html_string).group(1)
             images = ast.literal_eval(pages_string)
 
             for page_number, image_link in enumerate(images):
