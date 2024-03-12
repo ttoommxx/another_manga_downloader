@@ -302,22 +302,22 @@ def search(manga_website: str) -> dict:
 
     search_class = SearchClass(manga_website)
 
-    uc.mvaddwstr(0, 0, "Press TAB to exit.")
-    uc.mvaddwstr(1, 0, "| ")
+    uc.mvaddstr(0, 0, "Press TAB to exit.")
+    uc.mvaddch(1, 0, "|")
 
     while True:
         button = str(uc.getkey(), "utf-8")
 
         if button == "KEY_UP":
             if len(search_class.print_list) > 1:
-                uc.mvaddwstr(2 + search_class.index, 0, " ")
+                uc.mvaddch(2 + search_class.index, 0, " ")
                 search_class.index -= 1
-                uc.mvaddwstr(2 + search_class.index, 0, "-")
+                uc.mvaddch(2 + search_class.index, 0, "-")
         elif button == "KEY_DOWN":
             if len(search_class.print_list) > 1:
-                uc.mvaddwstr(2 + search_class.index, 0, " ")
+                uc.mvaddch(2 + search_class.index, 0, " ")
                 search_class.index += 1
-                uc.mvaddwstr(2 + search_class.index, 0, "-")
+                uc.mvaddch(2 + search_class.index, 0, "-")
         elif button == "^I":
             output = None
             break
@@ -326,12 +326,12 @@ def search(manga_website: str) -> dict:
             break
         if button == "KEY_BACKSPACE":
             if search_class.word:
-                uc.mvaddwstr(1, 2 + len(search_class.word) - 1, " ")
+                uc.mvaddch(1, 2 + len(search_class.word) - 1, " ")
                 search_class.word = search_class.word[:-1]
                 if search_class.queue.empty():
                     search_class.queue.put(1)
         elif len(button) == 1:
-            uc.mvaddwstr(1, 2 + len(search_class.word), button)
+            uc.mvadd_wch(1, 2 + len(search_class.word), button)
             search_class.word += button
             if search_class.queue.empty():
                 search_class.queue.put(1)
