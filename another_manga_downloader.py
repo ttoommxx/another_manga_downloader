@@ -67,7 +67,7 @@ class SearchClass:
         self._print_list = []
         self.queue = queue.Queue(maxsize=1)
 
-        # enbale the curses module
+        # enable the curses module
         self.stdscr = uc.initscr()
         uc.cbreak()
         uc.noecho()
