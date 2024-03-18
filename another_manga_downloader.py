@@ -73,6 +73,7 @@ class SearchClass:
         uc.noecho()
         uc.keypad(self.stdscr, True)
         uc.curs_set(0)
+        # uc.leaveok(self.stdscr, True)
 
         # start the printer thread
         self.printer_thread = threading.Thread(
