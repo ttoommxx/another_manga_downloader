@@ -20,34 +20,34 @@ class Environment:
     """class that defined environment variables"""
 
     def __init__(self) -> None:
-        self.max_processes = min(os.cpu_count(), 8)
+        cpu_count = os.cpu_count()
+        self.max_processes = min(cpu_count, 8) if cpu_count else 1
         self.manager = multiprocessing.Manager()
-        self._stop = multiprocessing.Value("i", 0)
+        self.stop = 0
         self.print_queue = self.manager.Queue()
         self.get_manga = create_manga_dict(TIMEOUT)
-
-    @property
-    def stop(self) -> int:
-        """return stopping value"""
-
-        return self._stop.value
 
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
 
-        signal.signal(signal.SIGINT, lambda *args: None)
+        def sigint_child(*args) -> None:
+            """signal INT handler"""
+
+            self.stop = 1
+
+        signal.signal(signal.SIGINT, sigint_child)
 
     def set_main_process(self) -> None:
         """set process as main"""
 
-        def sigint_handler(*args) -> None:
+        def sigint_main(*args) -> None:
             """signal INT handler"""
 
             print("\nQuitting..")
             self.print_queue.put(1)
-            self._stop.value = 1
+            self.stop = 1
 
-        signal.signal(signal.SIGINT, sigint_handler)
+        signal.signal(signal.SIGINT, sigint_main)
 
     def quit(self) -> None:
         """quit environment"""
@@ -57,6 +57,9 @@ class Environment:
             print("\nProgram terminated, re-run to resume.")
 
 
+ENV: Environment
+
+
 class SearchClass:
     """class contaning variables useful for the search printer"""
 
@@ -64,8 +67,8 @@ class SearchClass:
         self.word = ""
         self.url_manga = ""
         self._index = 0
-        self._print_list = []
-        self.queue = queue.Queue(maxsize=1)
+        self._print_list: list[str] = []
+        self.queue: queue.Queue[int] = queue.Queue(maxsize=1)
 
         # enable the curses module
         self.stdscr = uc.initscr()
@@ -129,7 +132,7 @@ class SearchClass:
     def quit(self) -> None:
         """quit class"""
 
-        self.queue.put(None)
+        self.queue.put(0)
         self.printer_thread.join()
         uc.endwin()
 
@@ -163,7 +166,7 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
+def download_and_zip(chapter: dict, folder_path: str, manga: dict) -> None:
     """given a chapter and a path, create the zip file
     add a token to the queue when the process is done"""
 
@@ -193,12 +196,12 @@ def download_and_zip(chapter: str, folder_path: str, manga: dict) -> None:
             try:
                 response = requests.get(image_link, stream=True, timeout=10)
             except Exception as e:
-                ENV.print_queue.put(chapter["name"] + " error type: " + e)
+                ENV.print_queue.put(chapter["name"] + " error type: " + str(e))
                 return
 
-            with open(file_path, "wb") as page:
+            with open(file_path, "wb") as page_file:
                 for chunk in response.iter_content(1024):
-                    page.write(chunk)
+                    page_file.write(chunk)
 
         if ENV.stop:
             return
@@ -296,7 +299,7 @@ def search_printer(manga_website: str, search_class) -> None:
         # ----- end print
 
 
-def search(manga_website: str) -> dict:
+def search(manga_website: str) -> dict | None:
     """function that search for a manga in the database"""
 
     ENV.get_manga[manga_website].load_database()
@@ -344,6 +347,9 @@ def search(manga_website: str) -> dict:
 
 def main() -> None:
     """main function"""
+    global ENV
+
+    ENV = Environment()
 
     parser = argparse.ArgumentParser(
         prog="mangalife_downloader", description="download manga from mangalife"
@@ -377,10 +383,8 @@ def main() -> None:
                 print("Press CTRL+C to quit.")
                 download_manga(manga)
 
+    ENV.quit()
+
 
 if __name__ == "__main__":
-    ENV = Environment()
-
     main()
-
-    ENV.quit()

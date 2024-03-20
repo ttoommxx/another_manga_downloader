@@ -10,7 +10,7 @@ class Mangalife:
     """mangalife"""
 
     def __init__(self, timeout: int):
-        self.list_mangas = []
+        self.list_mangas: list[str] = []
         self.timeout = timeout
 
     def load_database(self) -> None:
@@ -25,9 +25,11 @@ class Mangalife:
             response.raise_for_status()
 
         page_text = response.text
-        list_mangas = re.search(r"vm.Directory = (.*);", page_text).group(1)
+        list_mangas_group = re.search(r"vm.Directory = (.*);", page_text)
+        assert list_mangas_group is not None
         list_mangas = (
-            list_mangas.replace("null", "None")
+            list_mangas_group.group(1)
+            .replace("null", "None")
             .replace("false", "False")
             .replace("true", "True")
         )
@@ -62,7 +64,7 @@ class Mangalife:
             for entry in search_list
         ]
 
-    def create_manga(self, url_manga: str) -> str:
+    def create_manga(self, url_manga: str) -> dict | None:
         """create manga dictionary with various attributes"""
 
         if not url_manga:
@@ -71,12 +73,14 @@ class Mangalife:
         response = requests.get(url_manga, timeout=self.timeout)
 
         html_string = response.text
-        name = re.search(r"<title>(.*?) \| MangaLife</title>", html_string).group(1)
-        chapters_string = (
-            re.search(r"vm.Chapters = (.*?);", html_string)
-            .group(1)
-            .replace("null", "None")
-        )
+        name_group = re.search(r"<title>(.*?) \| MangaLife</title>", html_string)
+        assert name_group is not None
+        name = name_group.group(1)
+
+        chapters_group = re.search(r"vm.Chapters = (.*?);", html_string)
+        assert chapters_group is not None
+        chapters_string = chapters_group.group(1).replace("null", "None")
+
         list_chapters = ast.literal_eval(chapters_string)
         for chapter in list_chapters:
             chapter["name"] = chapter["Chapter"]
@@ -90,7 +94,7 @@ class Mangalife:
 
         return manga
 
-    def img_generator(self, chapter: str, manga: dict):
+    def img_generator(self, chapter: dict, manga: dict):
         """create a generator for pages numbers and their url in chapter"""
 
         chapter_name = chapter["name"]
@@ -116,16 +120,14 @@ class Mangalife:
             if r"<title>404 Page Not Found</title>" in page_text:
                 break
 
-            server_name = re.search(r"vm.CurPathName = \"(.*?)\";", page_text)
-            if not server_name:
-                yield None, "website is protected"
+            server_name_group = re.search(r"vm.CurPathName = \"(.*?)\";", page_text)
+            server_directory_group = re.search(r"vm.CurChapter = (.*?);", page_text)
+            if not server_name_group or not server_directory_group:
+                yield None, "website cannot be reached"
                 break
-            server_name = server_name.group(1)
-            server_directory = (
-                re.search(r"vm.CurChapter = (.*?);", page_text)
-                .group(1)
-                .replace("null", "None")
-            )
+
+            server_name = server_name_group.group(1)
+            server_directory = server_directory_group.group(1).replace("null", "None")
             server_directory = ast.literal_eval(server_directory)
             chap_num = server_directory["Chapter"]
             chap_num = (

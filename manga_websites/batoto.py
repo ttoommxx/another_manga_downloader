@@ -18,7 +18,7 @@ class Batoto:
         """return list of mangas"""
         pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
 
-        search_list = []
+        search_list: list[str] = []
 
         page_number = 1
         page_text = ""
@@ -56,7 +56,7 @@ class Batoto:
             for entry in search_list[:max_len]
         ]
 
-    def create_manga(self, url_manga: str) -> str:
+    def create_manga(self, url_manga: str) -> dict | None:
         """create manga dictionary with various attributes"""
 
         if not url_manga:
@@ -73,7 +73,9 @@ class Batoto:
             for chapter in list_chapters
         ]
 
-        name = re.search(r"<title>(.*?) Manga</title>", html_string).group(1)
+        name_group = re.search(r"<title>(.*?) Manga</title>", html_string)
+        assert name_group is not None
+        name = name_group.group(1)
 
         manga = {
             "website": "batoto",
@@ -83,7 +85,7 @@ class Batoto:
 
         return manga
 
-    def img_generator(self, chapter: str, manga: dict):
+    def img_generator(self, chapter: dict, manga: dict):
         """create a generator for pages in chapter"""
 
         chapter_url = chapter["url"]
@@ -97,8 +99,12 @@ class Batoto:
 
         if not stop:
             html_string = response.text
-            pages_string = re.search(r"const imgHttps = (.*?);", html_string).group(1)
-            images = ast.literal_eval(pages_string)
+            pages_group = re.search(r"const imgHttps = (.*?);", html_string)
+            if not pages_group:
+                yield None, "website cannot be reached"
+            else:
+                pages_string = pages_group.group(1)
+                images = ast.literal_eval(pages_string)
 
-            for page_number, image_link in enumerate(images):
-                yield f"{page_number:03d}", image_link
+                for page_number, image_link in enumerate(images):
+                    yield f"{page_number:03d}", image_link
