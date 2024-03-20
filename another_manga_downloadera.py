@@ -6,6 +6,7 @@ import multiprocessing
 import queue
 import threading
 import signal
+from typing import Any
 from zipfile import ZipFile
 import requests
 import unicurses as uc
@@ -30,7 +31,7 @@ class Environment:
     def set_child_process(self) -> None:
         """initialiser for secondary processes"""
 
-        def sigint_child(*args) -> None:
+        def sigint_child(*args: Any) -> None:
             """signal INT handler"""
 
             self.stop = 1
@@ -40,7 +41,7 @@ class Environment:
     def set_main_process(self) -> None:
         """set process as main"""
 
-        def sigint_main(*args) -> None:
+        def sigint_main(*args: Any) -> None:
             """signal INT handler"""
 
             print("\nQuitting..")
@@ -187,16 +188,16 @@ def download_and_zip(chapter: dict, folder_path: str, manga: dict) -> None:
     for page_str, image_link in ENV.get_manga[manga["website"]].img_generator(
         chapter, manga
     ):
-        if page_str is None:
-            ENV.print_queue.put(chapter["name"] + ' error type: "' + image_link + '"')
+        if not page_str:
+            ENV.print_queue.put(f"{chapter["name"]} error type '{image_link}'")
             return
 
         file_path = os.path.join(chapter_path, page_str + ".png")
         if not os.path.exists(file_path):
             try:
                 response = requests.get(image_link, stream=True, timeout=10)
-            except Exception as e:
-                ENV.print_queue.put(chapter["name"] + " error type: " + str(e))
+            except Exception as excp:
+                ENV.print_queue.put(f"{chapter["name"]} error type: {excp}")
                 return
 
             with open(file_path, "wb") as page_file:
@@ -269,7 +270,7 @@ def download_manga(manga: dict) -> None:
     printer_thread.join()
 
 
-def search_printer(manga_website: str, search_class) -> None:
+def search_printer(manga_website: str, search_class: SearchClass) -> None:
     """async search printer"""
 
     while search_class.queue.get():

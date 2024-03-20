@@ -2,13 +2,14 @@
 
 import re
 import ast
+from typing import Iterator
 import requests
 
 
 class Batoto:
     """mangalife"""
 
-    def __init__(self, timeout: int):
+    def __init__(self, timeout: int) -> None:
         self.timeout = timeout
 
     def load_database(self) -> None:
@@ -85,7 +86,7 @@ class Batoto:
 
         return manga
 
-    def img_generator(self, chapter: dict, manga: dict):
+    def img_generator(self, chapter: dict, manga: dict) -> Iterator:
         """create a generator for pages in chapter"""
 
         chapter_url = chapter["url"]
@@ -93,15 +94,15 @@ class Batoto:
         stop = False
         try:
             response = requests.get(chapter_url, timeout=self.timeout)
-        except Exception as e:
-            yield None, e
+        except Exception as excp:
+            yield "", excp
             stop = True
 
         if not stop:
             html_string = response.text
             pages_group = re.search(r"const imgHttps = (.*?);", html_string)
             if not pages_group:
-                yield None, "website cannot be reached"
+                yield "", "website cannot be reached"
             else:
                 pages_string = pages_group.group(1)
                 images = ast.literal_eval(pages_string)

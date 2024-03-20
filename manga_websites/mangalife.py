@@ -2,6 +2,7 @@
 
 import re
 import ast
+from typing import Iterator
 from itertools import islice
 import requests
 
@@ -9,7 +10,7 @@ import requests
 class Mangalife:
     """mangalife"""
 
-    def __init__(self, timeout: int):
+    def __init__(self, timeout: int) -> None:
         self.list_mangas: list[str] = []
         self.timeout = timeout
 
@@ -41,7 +42,7 @@ class Mangalife:
         list_mangas.sort()
         self.list_mangas = list_mangas
 
-    def print_list(self, word_search: str, max_len: int = 100):
+    def print_list(self, word_search: str, max_len: int = 100) -> list:
         """return list of mangas"""
 
         word_search_patter = word_search.lower().replace(" ", r".*?")
@@ -94,14 +95,14 @@ class Mangalife:
 
         return manga
 
-    def img_generator(self, chapter: dict, manga: dict):
+    def img_generator(self, chapter: dict, manga: dict) -> Iterator:
         """create a generator for pages numbers and their url in chapter"""
 
         chapter_name = chapter["name"]
         chapter_number = str(int(chapter_name[1:-1]))
         if chapter_name[-1] != "0":
             chapter_number += "." + chapter_name[-1]
-        index = "-index-" + chapter_name[0] if chapter_name[0] != "1" else ""
+        index = "-index-" + (chapter_name[0] if chapter_name[0] != "1" else "")
 
         page_number = 0
         while True:
@@ -110,8 +111,8 @@ class Mangalife:
                 manga["true name"]}-chapter-{chapter_number}{index}-page-{page_number}.html"
             try:
                 response = requests.get(url_page, timeout=self.timeout)
-            except Exception as e:
-                yield None, e
+            except Exception as excp:
+                yield "", excp
                 break
 
             if response.status_code != 200:
@@ -123,7 +124,7 @@ class Mangalife:
             server_name_group = re.search(r"vm.CurPathName = \"(.*?)\";", page_text)
             server_directory_group = re.search(r"vm.CurChapter = (.*?);", page_text)
             if not server_name_group or not server_directory_group:
-                yield None, "website cannot be reached"
+                yield "", "website cannot be reached"
                 break
 
             server_name = server_name_group.group(1)
