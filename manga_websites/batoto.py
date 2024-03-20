@@ -15,7 +15,7 @@ class Batoto:
     def load_database(self) -> None:
         """load the database of mangas"""
 
-    def print_list(self, word_search: str, max_len: int = 100) -> list:
+    def print_list(self, word_search: str, max_len: int = 100) -> list[tuple[str, str]]:
         """return list of mangas"""
         pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
 
@@ -57,11 +57,11 @@ class Batoto:
             for entry in search_list[:max_len]
         ]
 
-    def create_manga(self, url_manga: str) -> dict | None:
+    def create_manga(self, url_manga: str) -> dict[str, str | list[dict]]:
         """create manga dictionary with various attributes"""
 
         if not url_manga:
-            return None
+            return {}
 
         response = requests.get(url_manga, timeout=self.timeout)
         html_string = response.text
@@ -86,7 +86,9 @@ class Batoto:
 
         return manga
 
-    def img_generator(self, chapter: dict, manga: dict) -> Iterator:
+    def img_generator(
+        self, chapter: dict, manga: dict[str, str | list[dict]]
+    ) -> Iterator[tuple[str, str]]:
         """create a generator for pages in chapter"""
 
         chapter_url = chapter["url"]
@@ -95,7 +97,7 @@ class Batoto:
         try:
             response = requests.get(chapter_url, timeout=self.timeout)
         except Exception as excp:
-            yield "", excp
+            yield "", str(excp)
             stop = True
 
         if not stop:

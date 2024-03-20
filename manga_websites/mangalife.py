@@ -42,7 +42,7 @@ class Mangalife:
         list_mangas.sort()
         self.list_mangas = list_mangas
 
-    def print_list(self, word_search: str, max_len: int = 100) -> list:
+    def print_list(self, word_search: str, max_len: int = 100) -> list[tuple[str, str]]:
         """return list of mangas"""
 
         word_search_patter = word_search.lower().replace(" ", r".*?")
@@ -65,11 +65,11 @@ class Mangalife:
             for entry in search_list
         ]
 
-    def create_manga(self, url_manga: str) -> dict | None:
+    def create_manga(self, url_manga: str) -> dict[str, str | list[dict]]:
         """create manga dictionary with various attributes"""
 
         if not url_manga:
-            return None
+            return {}
 
         response = requests.get(url_manga, timeout=self.timeout)
 
@@ -95,14 +95,16 @@ class Mangalife:
 
         return manga
 
-    def img_generator(self, chapter: dict, manga: dict) -> Iterator:
+    def img_generator(
+        self, chapter: dict, manga: dict[str, str | list[dict]]
+    ) -> Iterator[tuple[str, str]]:
         """create a generator for pages numbers and their url in chapter"""
 
         chapter_name = chapter["name"]
         chapter_number = str(int(chapter_name[1:-1]))
         if chapter_name[-1] != "0":
             chapter_number += "." + chapter_name[-1]
-        index = "-index-" + (chapter_name[0] if chapter_name[0] != "1" else "")
+        index = ("-index-" + chapter_name[0]) if chapter_name[0] != "1" else ""
 
         page_number = 0
         while True:
@@ -112,7 +114,7 @@ class Mangalife:
             try:
                 response = requests.get(url_page, timeout=self.timeout)
             except Exception as excp:
-                yield "", excp
+                yield "", str(excp)
                 break
 
             if response.status_code != 200:

@@ -68,7 +68,7 @@ class SearchClass:
         self.word = ""
         self.url_manga = ""
         self._index = 0
-        self._print_list: list[str] = []
+        self._print_list: list[tuple[str, str]] = []
         self.queue: queue.Queue[int] = queue.Queue(maxsize=1)
 
         # enable the curses module
@@ -88,13 +88,13 @@ class SearchClass:
         self.printer_thread.start()
 
     @property
-    def print_list(self) -> list:
+    def print_list(self) -> list[tuple[str, str]]:
         """print_list return"""
 
         return self._print_list
 
     @print_list.setter
-    def print_list(self, new_list: list) -> None:
+    def print_list(self, new_list: list[tuple[str, str]]) -> None:
         """print_list setter"""
 
         self._print_list = new_list
@@ -167,7 +167,9 @@ def printer(manga_name: str, number_chapters: int) -> None:
         print("No chapter has failed.")
 
 
-def download_and_zip(chapter: dict, folder_path: str, manga: dict) -> None:
+def download_and_zip(
+    chapter: dict, folder_path: str, manga: dict[str, str | list[dict]]
+) -> None:
     """given a chapter and a path, create the zip file
     add a token to the queue when the process is done"""
 
@@ -235,7 +237,7 @@ def download_and_zip(chapter: dict, folder_path: str, manga: dict) -> None:
         ENV.print_queue.put(None)
 
 
-def download_manga(manga: dict) -> None:
+def download_manga(manga: dict[str, str | list[dict]]) -> None:
     """main function"""
 
     if ENV.stop:
@@ -244,6 +246,7 @@ def download_manga(manga: dict) -> None:
     # create folder if does not exists
     mangas_path = os.path.join(os.path.expanduser("~"), "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
+    assert isinstance(manga["name"], str)
     folder_path = os.path.join(mangas_path, manga["name"])
     os.makedirs(folder_path, exist_ok=True)
 
@@ -300,7 +303,7 @@ def search_printer(manga_website: str, search_class: SearchClass) -> None:
         # ----- end print
 
 
-def search(manga_website: str) -> dict | None:
+def search(manga_website: str) -> dict[str, str | list[dict]]:
     """function that search for a manga in the database"""
 
     ENV.get_manga[manga_website].load_database()
@@ -324,7 +327,7 @@ def search(manga_website: str) -> dict | None:
                 search_class.index += 1
                 uc.mvaddch(2 + search_class.index, 0, "-")
         elif button == "^I":
-            output = None
+            output = {}
             break
         elif button == "^J":
             output = ENV.get_manga[manga_website].create_manga(search_class.url_manga)
