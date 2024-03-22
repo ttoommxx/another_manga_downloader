@@ -1,12 +1,15 @@
 """collection of manga websites and their functions"""
 
-from .mangalife import Mangalife
-from .batoto import Batoto
+from manga_websites.mangalife import Mangalife
+from manga_websites.batoto import Batoto
 
 
 def create_manga_dict(timeout: int) -> dict:
     """return a list of mangas"""
-    return {"mangalife": Mangalife(timeout), "batoto": Batoto(timeout)}
+    return {
+        "mangalife": Mangalife(timeout),
+        "batoto": Batoto(timeout)
+        }
 
 
 def get_manga_website(url: str) -> str:
