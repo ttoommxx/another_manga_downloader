@@ -6,6 +6,7 @@ import multiprocessing
 import queue
 import threading
 import signal
+import ctypes
 from typing import Any
 from zipfile import ZipFile
 import requests
@@ -58,13 +59,13 @@ class Environment:
             print("\nProgram terminated, re-run to resume.")
 
 
-ENV: Environment
+ENV = Environment()
 
 
 class SearchClass:
     """class contaning variables useful for the search printer"""
 
-    def __init__(self, manga_website: str) -> None:
+    def __init__(self, manga_website: str, stdscr: ctypes.c_void_p) -> None:
         self.word = ""
         self.url_manga = ""
         self._index = 0
@@ -72,12 +73,12 @@ class SearchClass:
         self.queue: queue.Queue[int] = queue.Queue(maxsize=1)
 
         # enable the curses module
-        self.stdscr = uc.initscr()
+        self.stdscr = stdscr
         uc.cbreak()
         uc.noecho()
-        uc.keypad(self.stdscr, True)
+        uc.keypad(stdscr, True)
         uc.curs_set(0)
-        # uc.leaveok(self.stdscr, True)
+        uc.leaveok(stdscr, True)
 
         # start the printer thread
         self.printer_thread = threading.Thread(
@@ -303,18 +304,18 @@ def search_printer(manga_website: str, search_class: SearchClass) -> None:
         # ----- end print
 
 
-def search(manga_website: str) -> dict[str, str | list[dict]]:
+def search(stdscr: ctypes.c_void_p, manga_website: str) -> dict[str, str | list[dict]]:
     """function that search for a manga in the database"""
 
     ENV.get_manga[manga_website].load_database()
 
-    search_class = SearchClass(manga_website)
+    search_class = SearchClass(manga_website, stdscr)
 
     uc.mvaddstr(0, 0, "Press TAB to exit.")
     uc.mvaddch(1, 0, "|")
 
     while True:
-        button = str(uc.getkey(), "utf-8")
+        button = uc.getkey()
 
         if button == "KEY_UP":
             if len(search_class.print_list) > 1:
@@ -351,10 +352,7 @@ def search(manga_website: str) -> dict[str, str | list[dict]]:
 
 def main() -> None:
     """main function"""
-    global ENV
-
-    ENV = Environment()
-
+    
     parser = argparse.ArgumentParser(
         prog="mangalife_downloader", description="download manga from mangalife"
     )
@@ -382,7 +380,7 @@ def main() -> None:
         index = input("Selection: ")
         if index.isdigit() and 0 <= int(index) < len(manga_selection):
             manga_website = manga_selection[int(index)]
-            manga = search(manga_website)
+            manga = uc.wrapper(search, manga_website)
             if manga:
                 print("Press CTRL+C to quit.")
                 download_manga(manga)
