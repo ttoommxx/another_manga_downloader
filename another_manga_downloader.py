@@ -123,13 +123,19 @@ class SearchClass:
     def columns(self) -> int:
         """return number of columns"""
 
-        return uc.getmaxyx(self.stdscr)[1]
+        return uc.getmaxx(self.stdscr)
 
     @property
     def rows(self) -> int:
         """return number of rows"""
 
-        return uc.getmaxyx(self.stdscr)[0]
+        return uc.getmaxy(self.stdscr)
+
+    def queue_put(self) -> None:
+        """put 1 in queue if it is empty"""
+
+        if self.queue.empty():
+            self.queue.put(1)
 
     def quit(self) -> None:
         """quit class"""
@@ -277,6 +283,9 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
 def search_printer(manga_website: str, search_class: SearchClass) -> None:
     """async search printer"""
 
+    print_win = uc.newwin(search_class.rows - 2, search_class.columns, 2, 0)
+    uc.leaveok(print_win, True)
+
     while search_class.queue.get():
         search_class.print_list = ENV.get_manga[manga_website].print_list(
             search_class.word, search_class.rows - 2
@@ -285,9 +294,8 @@ def search_printer(manga_website: str, search_class: SearchClass) -> None:
         columns_len = search_class.columns
 
         # ----- print
-        for j in range(2, search_class.rows):  # clear lines
-            uc.move(j, 0)
-            uc.clrtoeol()
+        uc.wresize(print_win, search_class.rows - 2, search_class.columns)
+        uc.wclear(print_win)
 
         for i, entry in enumerate(search_class.print_list):
             if len(entry[0]) <= columns_len - 2:
@@ -298,9 +306,9 @@ def search_printer(manga_website: str, search_class: SearchClass) -> None:
                 pre = "-"
             else:
                 pre = " "
-            uc.mvaddwstr(2 + i, 0, f"{pre} {title}")
+            uc.mvwaddwstr(print_win, i, 0, f"{pre} {title}")
 
-        uc.refresh()
+        uc.wrefresh(print_win)
         # ----- end print
 
 
@@ -335,35 +343,29 @@ def search(stdscr: ctypes.c_void_p, manga_website: str) -> dict[str, str | list[
             break
         if button == "KEY_BACKSPACE":
             if search_class.word:
-                uc.mvaddch(1, 2 + len(search_class.word) - 1, " ")
+                uc.mvaddch(1, 1 + len(search_class.word), " ")
                 search_class.word = search_class.word[:-1]
                 if search_class.queue.empty():
-                    search_class.queue.put(1)
+                    search_class.queue_put()
         elif len(button) == 1:
             uc.mvadd_wch(1, 2 + len(search_class.word), button)
             search_class.word += button
             if search_class.queue.empty():
-                search_class.queue.put(1)
+                search_class.queue_put()
 
     search_class.quit()
 
     return output
 
 
-def main() -> None:
+def main(urls: list[str]) -> None:
     """main function"""
-    
-    parser = argparse.ArgumentParser(
-        prog="mangalife_downloader", description="download manga from mangalife"
-    )
-    parser.add_argument("-u", "--urls", nargs="+")
-    args = parser.parse_args()  # args.picker contains the modality
 
     ENV.set_main_process()
 
-    if args.urls:
+    if urls:
         print("Press CTRL+C to quit.")
-        for url in args.urls:
+        for url in urls:
             manga_website = get_manga_website(url)
             if not manga_website:
                 print("Manga website not identified")
@@ -389,4 +391,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        prog="another_manga_downloader",
+        description="yes, yikes, here's another manga downloader..",
+    )
+    parser.add_argument("-u", "--urls", nargs="+", help="insert links to download")
+    args = parser.parse_args()  # args.picker contains the modality
+
+    main(args.urls)
