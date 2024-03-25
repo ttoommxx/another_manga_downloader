@@ -65,7 +65,7 @@ ENV = Environment()
 class SearchClass:
     """class contaning variables useful for the search printer"""
 
-    def __init__(self, manga_website: str, stdscr: ctypes.c_void_p) -> None:
+    def __init__(self, manga_website: str) -> None:
         self.word = ""
         self.url_manga = ""
         self._index = 0
@@ -73,12 +73,11 @@ class SearchClass:
         self.queue: queue.Queue[int] = queue.Queue(maxsize=1)
 
         # enable the curses module
-        self.stdscr = stdscr
         uc.cbreak()
         uc.noecho()
-        uc.keypad(stdscr, True)
+        uc.keypad(uc.stdscr, True)
         uc.curs_set(0)
-        uc.leaveok(stdscr, True)
+        uc.leaveok(uc.stdscr, True)
 
         # start the printer thread
         self.printer_thread = threading.Thread(
@@ -123,13 +122,13 @@ class SearchClass:
     def columns(self) -> int:
         """return number of columns"""
 
-        return uc.getmaxx(self.stdscr)
+        return uc.getmaxx(uc.stdscr)
 
     @property
     def rows(self) -> int:
         """return number of rows"""
 
-        return uc.getmaxy(self.stdscr)
+        return uc.getmaxy(uc.stdscr)
 
     def queue_put(self) -> None:
         """put 1 in queue if it is empty"""
@@ -317,7 +316,7 @@ def search(stdscr: ctypes.c_void_p, manga_website: str) -> dict[str, str | list[
 
     ENV.get_manga[manga_website].load_database()
 
-    search_class = SearchClass(manga_website, stdscr)
+    search_class = SearchClass(manga_website)
 
     uc.mvaddstr(0, 0, "Press TAB to exit.")
     uc.mvaddch(1, 0, "|")
