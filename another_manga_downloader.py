@@ -156,13 +156,15 @@ def printer(manga_name: str, number_chapters: int) -> None:
     failed = []
     ENV.print_queue.put(None)
 
+    print(f"- {manga_name}:")
+
     for i in range(number_chapters + 1):
         token = ENV.print_queue.get()
         if token == 1:
             return
         if token:
             failed.append(token)
-        print(f"- {manga_name}: {i} / {number_chapters} completed.", end="\r")
+        print(f"  {i} / {number_chapters}", end="\r")
 
     print()
     if failed:
