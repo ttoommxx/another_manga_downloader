@@ -199,7 +199,7 @@ def download_and_zip(
         chapter, manga
     ):
         if not page_str:
-            ENV.print_queue.put(f"{chapter["name"]} error type '{image_link}'")
+            ENV.print_queue.put(f"{chapter['name']} error type '{image_link}'")
             return
 
         file_path = os.path.join(chapter_path, page_str + ".png")
@@ -207,7 +207,7 @@ def download_and_zip(
             try:
                 response = requests.get(image_link, stream=True, timeout=10)
             except Exception as excp:
-                ENV.print_queue.put(f"{chapter["name"]} error type: {excp}")
+                ENV.print_queue.put(f"{chapter['name']} error type: {excp}")
                 return
 
             with open(file_path, "wb") as page_file:
