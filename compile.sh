@@ -7,15 +7,10 @@ fi
 
 installed_packages=$(pip list)
 
-if echo "$installed_packages" | grep "Uni-Curses"; then
-    if echo "$installed_packages" | grep "pyinstaller"; then
-        rm -rf build
-        rm -rf dist
-        pyinstaller --onefile another_manga_downloader.py
-    else
-        echo "Error: mypyc is not installed via pip, run pip install mypy"
-    fi
+if echo "$installed_packages" | grep "Nuitka"; then
+	nuitka another_manga_downloader.py
+elif echo "$installed_packages" | grep "pyinstaller"; then
+	pyinstaller --onefile another_manga_downloader.py
 else
-    echo "Error: unicurses is not installed via pip, run pip install uni-curses"
-    exit 1
+	echo "Error: neither nuitka nor pyinstaller are installed via pip"
 fi
