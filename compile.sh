@@ -8,8 +8,10 @@ fi
 installed_packages=$(pip list)
 
 if echo "$installed_packages" | grep "Nuitka"; then
-	nuitka another_manga_downloader.py
+	echo "Compiling using nuitka"
+	nuitka --onefile another_manga_downloader.py
 elif echo "$installed_packages" | grep "pyinstaller"; then
+	echo "Compiling using pyinstaller"
 	pyinstaller --onefile another_manga_downloader.py
 else
 	echo "Error: neither nuitka nor pyinstaller are installed via pip"
