@@ -11,6 +11,7 @@ class Batoto:
 
     def __init__(self, timeout: int) -> None:
         self.timeout = timeout
+        self.page = 'https://battwo.com'
 
     def load_database(self) -> None:
         """load the database of mangas"""
@@ -27,7 +28,7 @@ class Batoto:
         while len(search_list) < max_len:
             if page_number == 1:
                 response = requests.get(
-                    f"https://bato.to/search?word={word_search}",
+                    self.page + f"/search?word={word_search}",
                     timeout=self.timeout,
                 )
             else:
@@ -35,7 +36,7 @@ class Batoto:
                 if f"page={page_number}" not in page_text:
                     break
                 response = requests.get(
-                    f"https://bato.to/search?word={word_search}&page={page_number}",
+                    self.page + f"/search?word={word_search}&page={page_number}",
                     timeout=self.timeout,
                 )
 
@@ -52,7 +53,7 @@ class Batoto:
                 entry[1]
                 .replace(r'<span class="highlight-text">', "")
                 .replace(r"</span>", ""),
-                f"https://bato.to{ entry[0] }",
+                self.page + entry[0],
             )
             for entry in search_list[:max_len]
         ]
@@ -70,7 +71,7 @@ class Batoto:
             r'<a class=".*?" href="(.*?)" >\s*<b>(.*?)</b>', html_string
         )
         list_chapters = [
-            {"url": f"https://bato.to{chapter[0]}", "name": chapter[1]}
+            {"url": self.page + chapter[0], "name": chapter[1]}
             for chapter in list_chapters
         ]
 

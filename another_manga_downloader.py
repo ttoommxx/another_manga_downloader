@@ -15,7 +15,7 @@ from manga_websites import create_manga_dict, get_manga_website
 
 # environment variables
 
-TIMEOUT = 100  # this variable can be changed
+TIMEOUT = 10  # this variable can be changed
 
 
 class Environment:

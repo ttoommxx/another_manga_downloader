@@ -13,12 +13,13 @@ class Mangalife:
     def __init__(self, timeout: int) -> None:
         self.list_mangas: list[str] = []
         self.timeout = timeout
+        self.page = "https://www.manga4life.com"
 
     def load_database(self) -> None:
         """load the database of mangas"""
         print("Downloading mangalife database")
         response = requests.get(
-            "https://www.manga4life.com/search/", timeout=self.timeout
+            self.page + "/search/", timeout=self.timeout
         )
 
         if response.status_code != 200:
@@ -61,7 +62,7 @@ class Mangalife:
 
         search_list = list(islice(search_iter, max_len))
         return [
-            (entry[1], f"https://www.manga4life.com/manga/{ entry[0] }")
+            (entry[1], self.page + "/manga/" + entry[0])
             for entry in search_list
         ]
 
@@ -109,7 +110,7 @@ class Mangalife:
         page_number = 0
         while True:
             page_number += 1
-            url_page = f"https://www.manga4life.com/read-online/{
+            url_page = self.page + f"/read-online/{
                 manga["true name"]}-chapter-{chapter_number}{index}-page-{page_number}.html"
             try:
                 response = requests.get(url_page, timeout=self.timeout)
