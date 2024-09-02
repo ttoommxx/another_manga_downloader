@@ -9,6 +9,9 @@ from typing import Iterator
 class NameOfTheManga:
     """name of the manga"""
 
+    name = ""
+    page = ""
+
     def __init__(self) -> None:
         self.list_mangas = []  # total list of mangas (if available)
 

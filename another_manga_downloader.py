@@ -15,15 +15,15 @@ from manga_websites import create_manga_dict, get_manga_website
 
 # environment variables
 
-TIMEOUT = 10  # this variable can be changed
+TIMEOUT = 10
+MAX_PROCESSES = 8
 
 
 class Environment:
     """class that defined environment variables"""
 
     def __init__(self) -> None:
-        cpu_count = os.cpu_count()
-        self.max_processes = min(cpu_count, 8) if cpu_count else 1
+        self.max_processes = min(os.cpu_count() or 1, MAX_PROCESSES)
         self.manager = multiprocessing.Manager()
         self.stop = 0
         self.print_queue = self.manager.Queue()
@@ -252,7 +252,8 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
         return
 
     # create folder if does not exists
-    mangas_path = os.path.join(os.path.expanduser("~"), "Mangas")
+    home = os.path.expanduser("~")
+    mangas_path = os.path.join(home, "Mangas")
     os.makedirs(mangas_path, exist_ok=True)
     assert isinstance(manga["name"], str)
     folder_path = os.path.join(mangas_path, manga["name"])

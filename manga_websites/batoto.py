@@ -7,17 +7,20 @@ import requests
 
 
 class Batoto:
-    """mangalife"""
+    """batoto"""
+
+    name = "batoto"
+    page = "https://battwo.com"
 
     def __init__(self, timeout: int) -> None:
         self.timeout = timeout
-        self.page = 'https://battwo.com'
 
     def load_database(self) -> None:
         """load the database of mangas"""
 
     def print_list(self, word_search: str, max_len: int = 100) -> list[tuple[str, str]]:
         """return list of mangas"""
+
         pattern = r'<a class="item-title" href="(.*?)" >(.*?)</a>'
 
         search_list: list[str] = []
