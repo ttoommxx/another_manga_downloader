@@ -265,20 +265,18 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
     ]
     number_chapters = len(list_chapters)
 
-    # start processing pool
-    pool = multiprocessing.Pool(
-        processes=ENV.max_processes, initializer=ENV.set_child_process
-    )
-
     # send all the processes to a pool
     printer_thread = threading.Thread(
         target=printer, daemon=True, args=(manga["name"], number_chapters)
     )
     printer_thread.start()
-    pool.starmap(download_and_zip, list_chapters)
 
-    pool.close()
-    pool.join()
+    # start processing pool
+    with multiprocessing.Pool(
+        processes=ENV.max_processes, initializer=ENV.set_child_process
+    ) as pool:
+        pool.starmap(download_and_zip, list_chapters)
+
     printer_thread.join()
 
 
