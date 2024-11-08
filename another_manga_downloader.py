@@ -1,48 +1,37 @@
-"""necessary modules"""
+"""manga downloader written in Python"""
 
 import os
+import sys
 import argparse
-import multiprocessing
+from multiprocessing.pool import ThreadPool
 import queue
 import threading
 import signal
 import ctypes
-from typing import Any
 from zipfile import ZipFile
 import requests
 import unicurses as uc
 from manga_websites import create_manga_dict, get_manga_website
 
+
+if sys._is_gil_enabled():
+    print("Python GIL is enabled, might experience performance")
+
 # environment variables
-
-TIMEOUT = 10
-MAX_PROCESSES = 8
-
 
 class Environment:
     """class that defined environment variables"""
 
-    def __init__(self) -> None:
-        self.max_processes = min(os.cpu_count() or 1, MAX_PROCESSES)
-        self.manager = multiprocessing.Manager()
+    def __init__(self, timeout) -> None:
+        self.timeout = timeout
         self.stop = 0
-        self.print_queue = self.manager.Queue()
-        self.get_manga = create_manga_dict(TIMEOUT)
-
-    def set_child_process(self) -> None:
-        """initialiser for secondary processes"""
-
-        def sigint_child(*args: Any) -> None:
-            """signal INT handler"""
-
-            self.stop = 1
-
-        signal.signal(signal.SIGINT, sigint_child)
+        self.print_queue = queue.Queue()
+        self.get_manga = create_manga_dict(timeout)
 
     def set_main_process(self) -> None:
         """set process as main"""
 
-        def sigint_main(*args: Any) -> None:
+        def sigint_main(*args) -> None:
             """signal INT handler"""
 
             print("\nQuitting..")
@@ -54,12 +43,11 @@ class Environment:
     def quit(self) -> None:
         """quit environment"""
 
-        self.manager.shutdown()
         if self.stop:
             print("\nProgram terminated, re-run to resume.")
 
 
-ENV = Environment()
+ENV = Environment(timeout=10)
 
 
 class SearchClass:
@@ -205,7 +193,7 @@ def download_and_zip(
         file_path = os.path.join(chapter_path, page_str + ".png")
         if not os.path.exists(file_path):
             try:
-                response = requests.get(image_link, stream=True, timeout=10)
+                response = requests.get(image_link, stream=True, timeout=ENV.timeout)
             except Exception as excp:
                 ENV.print_queue.put(f"{chapter['name']} error type: {excp}")
                 return
@@ -261,7 +249,7 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
 
     # add more to the list of chapters
     list_chapters = [
-        [chapter, folder_path, manga] for chapter in manga["list_chapters"]
+        (chapter, folder_path, manga) for chapter in manga["list_chapters"]
     ]
     number_chapters = len(list_chapters)
 
@@ -272,9 +260,7 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
     printer_thread.start()
 
     # start processing pool
-    with multiprocessing.Pool(
-        processes=ENV.max_processes, initializer=ENV.set_child_process
-    ) as pool:
+    with ThreadPool() as pool:
         pool.starmap(download_and_zip, list_chapters)
 
     printer_thread.join()
