@@ -1,7 +1,10 @@
 certifi==2024.8.30
 charset-normalizer==3.4.0
 idna==3.10
+Nuitka==2.4.11
+ordered-set==4.1.0
 requests==2.32.3
 Uni-Curses==3.1.2
 urllib3==2.2.3
 x256==0.0.3
+zstandard==0.23.0
