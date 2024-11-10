@@ -19,6 +19,7 @@ if sys._is_gil_enabled():
 
 # environment variables
 
+
 class Environment:
     """class that defined environment variables"""
 
@@ -129,6 +130,7 @@ class SearchClass:
 
         self.queue.put(0)
         self.printer_thread.join()
+        uc.clear()
         uc.endwin()
 
 
@@ -260,7 +262,7 @@ def download_manga(manga: dict[str, str | list[dict]]) -> None:
     printer_thread.start()
 
     # start processing pool
-    with ThreadPool() as pool:
+    with ThreadPool(processes=8) as pool:
         pool.starmap(download_and_zip, list_chapters)
 
     printer_thread.join()
@@ -360,18 +362,24 @@ def main(urls: list[str]) -> None:
             download_manga(manga)
 
     else:
-        print("Select the website you want to use")
-        manga_selection = list(ENV.get_manga.keys())
-        for num, key in enumerate(manga_selection):
-            print(num, "->", key)
+        search_again = True
+        while search_again:
+            print("Select the website you want to use")
+            manga_selection = list(ENV.get_manga.keys())
+            for num, key in enumerate(manga_selection):
+                print(num, "->", key)
 
-        index = input("Selection: ")
-        if index.isdigit() and 0 <= int(index) < len(manga_selection):
-            manga_website = manga_selection[int(index)]
-            manga = uc.wrapper(search, manga_website)
-            if manga:
-                print("Press CTRL+C to quit.")
-                download_manga(manga)
+            index = input("Selection: ")
+            if index.isdigit() and 0 <= int(index) < len(manga_selection):
+                manga_website = manga_selection[int(index)]
+                manga = uc.wrapper(search, manga_website)
+                if manga:
+                    print("Press CTRL+C to quit.")
+                    download_manga(manga)
+
+            search_again = input(
+                "Do you want to search again? [y/n] "
+            ).strip().lower() in ("y", "yes")
 
     ENV.quit()
 
