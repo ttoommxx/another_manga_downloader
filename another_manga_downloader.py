@@ -14,7 +14,7 @@ import unicurses as uc
 from manga_websites import create_manga_dict, get_manga_website
 
 
-if sys._is_gil_enabled():
+if sys.version_info.major == 3 and sys.version_info.minor >= 13 and sys._is_gil_enabled():
     print("Python GIL is enabled, might experience performance")
 
 # environment variables
